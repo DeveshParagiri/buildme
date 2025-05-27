@@ -7,7 +7,6 @@ Undo commands. Generate code. Scaffold projects. All from your terminal.
 <p align="center">
   <img src="docs/buildme-demo.gif" alt="buildme CLI demo" width="700"/>
 </p>
----
 
 ## ⚡️ Features
 
@@ -81,10 +80,10 @@ buildme generate "bash script to zip all files in ./logs older than 7 days"
 ---
 
 ### 🔮 Coming Soon
-	•	🎥 buildme record — Log and replay terminal workflows
-	•	📤 buildme share — Export and share setup steps with your team
-	•	🧠 buildme explain — Understand any terminal command or file
-	•	💾 buildme snapshot/restore — Save and restore project states
+•	🎥 buildme record — Log and replay terminal workflows
+•	📤 buildme share — Export and share setup steps with your team
+•	🧠 buildme explain — Understand any terminal command or file
+•	💾 buildme snapshot/restore — Save and restore project states
 ---
 
 ### 🤝 Contributing
