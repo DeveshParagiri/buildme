@@ -55,9 +55,7 @@ buildme starter init cli-app username/repo --instructions="Focus on CLI structur
 ```
 ### ✨ Generate a code snippet
 ```bash
-buildme generate "a python script that fetches weather data using OpenWeatherMap API"
-
-buildme generate "a python script that fetches weather data using OpenWeatherMap API"
+buildme "a python script that fetches weather data using OpenWeatherMap API"
 ```
 ---
 
@@ -74,7 +72,7 @@ buildme starter init cool-cli /Users/dev/cli-template
 buildme starter init flask-api devparagiri/flask-api-template
 
 # Generate a shell script that zips files in a folder
-buildme generate "bash script to zip all files in ./logs older than 7 days"
+buildme "bash script to zip all files in ./logs older than 7 days"
 
 ```
 ---
@@ -98,10 +96,8 @@ cd buildme
 
 ### 📂 Project Structure
 ```bash
-buildme.zsh           # Main CLI integration
+buildme.plugin.zsh           # Main CLI integration
 buildme_starter.zsh   # Starter template logic
-buildme_generate.zsh  # Code generation logic
-buildme_undo.zsh      # Undo functionality
 buildme_history.zsh   # Terminal history tracking
 ```
 
