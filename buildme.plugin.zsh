@@ -2,9 +2,11 @@
 
 # Source the history tracking file
 source "${0:A:h}/buildme_history.zsh"
+# Source the starter functionality
+source "${0:A:h}/buildme_starter.zsh"
 
-starter_dir="$HOME/.buildme_starters"
-mkdir -p "$starter_dir"
+# starter_dir="$HOME/.buildme_starters"
+# mkdir -p "$starter_dir"
 
 get_openai_key() {
   if [[ -n "$OPENAI_API_KEY" ]]; then
@@ -169,77 +171,77 @@ buildme_run_stepwise() {
   exec 0<&3
 }
 
-buildme_starter() {
-  local subcmd="$1"
-  shift
+# buildme_starter() {
+#   local subcmd="$1"
+#   shift
 
-  case "$subcmd" in
-    list)
-      echo "📦 Available starters:"
-      for f in "$starter_dir"/*.sh; do
-        [[ -f "$f" ]] || continue
-        name="${f:t:r}"
-        desc=$(grep -m1 '^# Description:' "$f" | cut -d: -f2- | sed 's/^ *//')
-        echo "• $name — ${desc:-No description}"
-      done
-      ;;
+#   case "$subcmd" in
+#     list)
+#       echo "📦 Available starters:"
+#       for f in "$starter_dir"/*.sh; do
+#         [[ -f "$f" ]] || continue
+#         name="${f:t:r}"
+#         desc=$(grep -m1 '^# Description:' "$f" | cut -d: -f2- | sed 's/^ *//')
+#         echo "• $name — ${desc:-No description}"
+#       done
+#       ;;
 
-    create)
-      local name="$1"
-      local path="$2"
-      if [[ -z "$name" || -z "$path" ]]; then
-        echo "❌ Usage: buildme starter create <name> <folder>"
-        return 1
-      fi
-      local file="$starter_dir/$name.sh"
-      if [[ ! -f "$file" ]]; then
-        echo "❌ Starter '$name' not found."
-        return 1
-      fi
-      command chmod +x "$file"
-      /bin/zsh "$file" "$path"
-      ;;
+#     create)
+#       local name="$1"
+#       local path="$2"
+#       if [[ -z "$name" || -z "$path" ]]; then
+#         echo "❌ Usage: buildme starter create <name> <folder>"
+#         return 1
+#       fi
+#       local file="$starter_dir/$name.sh"
+#       if [[ ! -f "$file" ]]; then
+#         echo "❌ Starter '$name' not found."
+#         return 1
+#       fi
+#       command chmod +x "$file"
+#       /bin/zsh "$file" "$path"
+#       ;;
 
-    make)
-      local name="$1"
-      if [[ -z "$name" ]]; then
-        echo "❌ Usage: buildme starter add <name>"
-        return 1
-      fi
-      local dest="$starter_dir/$name.sh"
-      echo "# Description: Your custom starter script" > "$dest"
-      echo "#!/bin/bash" >> "$dest"
-      echo "echo 'Modify this file to define your project setup.'" >> "$dest"
-      chmod +x "$dest"
-      echo "✅ Created starter template: $dest"
-      ;;
+#     make)
+#       local name="$1"
+#       if [[ -z "$name" ]]; then
+#         echo "❌ Usage: buildme starter add <name>"
+#         return 1
+#       fi
+#       local dest="$starter_dir/$name.sh"
+#       echo "# Description: Your custom starter script" > "$dest"
+#       echo "#!/bin/bash" >> "$dest"
+#       echo "echo 'Modify this file to define your project setup.'" >> "$dest"
+#       chmod +x "$dest"
+#       echo "✅ Created starter template: $dest"
+#       ;;
 
-    edit)
-      local name="$1"
-      local file="$starter_dir/$name.sh"
-      if [[ ! -f "$file" ]]; then
-        echo "❌ Starter '$name' not found."
-        return 1
-      fi
-      ${EDITOR:-vim} "$file"
-      ;;
+#     edit)
+#       local name="$1"
+#       local file="$starter_dir/$name.sh"
+#       if [[ ! -f "$file" ]]; then
+#         echo "❌ Starter '$name' not found."
+#         return 1
+#       fi
+#       ${EDITOR:-vim} "$file"
+#       ;;
 
-    delete)
-      local name="$1"
-      local file="$starter_dir/$name.sh"
-      if [[ -z "$name" || ! -f "$file" ]]; then
-        echo "❌ Starter '$name' not found."
-        return 1
-      fi
-      rm "$file"
-      echo "🗑️  Deleted starter '$name'"
-      ;;
+#     delete)
+#       local name="$1"
+#       local file="$starter_dir/$name.sh"
+#       if [[ -z "$name" || ! -f "$file" ]]; then
+#         echo "❌ Starter '$name' not found."
+#         return 1
+#       fi
+#       rm "$file"
+#       echo "🗑️  Deleted starter '$name'"
+#       ;;
 
-    *)
-      echo "❌ Unknown starter command. Use: list, create, make, edit, delete"
-      ;;
-  esac
-}
+#     *)
+#       echo "❌ Unknown starter command. Use: list, create, make, edit, delete"
+#       ;;
+#   esac
+# }
 
 buildme_undo() {
     local user_instruction="$*"
