@@ -112,8 +112,8 @@ This project is licensed under the MIT License.
 
 ### 📣 Author
 
-Dev Paragiri
-Twitter/X | Website
+Dev Paragiri  
+[Twitter/X](https://x.com/DeveshParagiri) | [Website](https://deveshparagiri.com)
 
 ⚡ If you use buildme, tweet me your workflows — I love seeing what devs are cooking.
 
