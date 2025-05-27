@@ -3,8 +3,10 @@
 **AI-powered CLI assistant for developers.**  
 Undo commands. Generate code. Scaffold projects. All from your terminal.
 
-![buildme demo](docs/demo.gif) <!-- Replace this with a real demo gif or terminal screenshot -->
-
+<!-- GIF Preview -->
+<p align="center">
+  <img src="docs/buildme-demo.gif" alt="buildme CLI demo" width="700"/>
+</p>
 ---
 
 ## ⚡️ Features
