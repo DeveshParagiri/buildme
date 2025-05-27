@@ -171,78 +171,6 @@ buildme_run_stepwise() {
   exec 0<&3
 }
 
-# buildme_starter() {
-#   local subcmd="$1"
-#   shift
-
-#   case "$subcmd" in
-#     list)
-#       echo "📦 Available starters:"
-#       for f in "$starter_dir"/*.sh; do
-#         [[ -f "$f" ]] || continue
-#         name="${f:t:r}"
-#         desc=$(grep -m1 '^# Description:' "$f" | cut -d: -f2- | sed 's/^ *//')
-#         echo "• $name — ${desc:-No description}"
-#       done
-#       ;;
-
-#     create)
-#       local name="$1"
-#       local path="$2"
-#       if [[ -z "$name" || -z "$path" ]]; then
-#         echo "❌ Usage: buildme starter create <name> <folder>"
-#         return 1
-#       fi
-#       local file="$starter_dir/$name.sh"
-#       if [[ ! -f "$file" ]]; then
-#         echo "❌ Starter '$name' not found."
-#         return 1
-#       fi
-#       command chmod +x "$file"
-#       /bin/zsh "$file" "$path"
-#       ;;
-
-#     make)
-#       local name="$1"
-#       if [[ -z "$name" ]]; then
-#         echo "❌ Usage: buildme starter add <name>"
-#         return 1
-#       fi
-#       local dest="$starter_dir/$name.sh"
-#       echo "# Description: Your custom starter script" > "$dest"
-#       echo "#!/bin/bash" >> "$dest"
-#       echo "echo 'Modify this file to define your project setup.'" >> "$dest"
-#       chmod +x "$dest"
-#       echo "✅ Created starter template: $dest"
-#       ;;
-
-#     edit)
-#       local name="$1"
-#       local file="$starter_dir/$name.sh"
-#       if [[ ! -f "$file" ]]; then
-#         echo "❌ Starter '$name' not found."
-#         return 1
-#       fi
-#       ${EDITOR:-vim} "$file"
-#       ;;
-
-#     delete)
-#       local name="$1"
-#       local file="$starter_dir/$name.sh"
-#       if [[ -z "$name" || ! -f "$file" ]]; then
-#         echo "❌ Starter '$name' not found."
-#         return 1
-#       fi
-#       rm "$file"
-#       echo "🗑️  Deleted starter '$name'"
-#       ;;
-
-#     *)
-#       echo "❌ Unknown starter command. Use: list, create, make, edit, delete"
-#       ;;
-#   esac
-# }
-
 buildme_undo() {
     local user_instruction="$*"
     user_instruction="${user_instruction#undo}"
@@ -361,24 +289,37 @@ Options:
   --step               Run each command one-by-one with confirmation
   --model <name>       Choose model (gpt-4o-mini, deepseek, gpt-3.5-turbo, etc.)
   init                 Interactive setup for API keys (OpenAI / DeepSeek)
-  undo [extra]         Try to undo last buildme command with optional LLM guidance
-  undo --from-history [n]  Undo last n commands from terminal history (default: 10)
-  starter <cmd>        Manage or run project starters (create, add, list, edit)
+  undo [description]   Try to undo last buildme command with optional guidance
+  starter <cmd>        Manage project starters
   history [n]          Show last n commands (default: 10)
   clear-history        Clear command history
   --help               Show this help message
 
+Starter Commands:
+  starter list         List all available starters (built-in and custom)
+  starter new <name> <target> [--var=value]
+                      Create new project from a starter template
+  starter init <name> <source> [--instructions="..."]
+                      Create a starter from GitHub repo or local directory
+  starter delete <name>
+                      Delete a starter template
+
 Examples:
   buildme "create and activate a python virtualenv"
   buildme --step "install packages and update requirements"
-  buildme undo "remove temp files"
+  buildme --model deepseek "set up a React project"
+  buildme undo "remove the files we just created"
+  
+  # Starter examples
   buildme starter list
-  buildme starter create fastapi my-fastapi-app
-  buildme starter make my-template
-  buildme starter edit my-template
-  buildme starter delete my-template
-  buildme history 20    # Show last 20 commands
-  buildme clear-history # Clear command history
+  buildme starter new fastapi my-api
+  buildme starter init my-template ./existing-project
+  buildme starter init fastapi-starter https://github.com/user/repo
+  buildme starter delete old-template
+  
+  # History examples
+  buildme history 20
+  buildme clear-history
 
 EOF
     return 0
