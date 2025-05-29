@@ -6,8 +6,15 @@ buildme_undo() {
     local buildme_cmds=""
     local history_cmds=""
     
-    if [[ -f ~/.last_buildme_commands.sh ]]; then
-        # Extract just the command part after the timestamp and pipe
+    if [[ -f ~/.last_buildme_session.sh ]]; then
+        # Read the last 2-3 buildme sessions from the accumulated file
+        local session_content=$(tail -n 20 ~/.last_buildme_session.sh | grep -E "(ORIGINAL_REQUEST|GENERATED_COMMANDS|TIMESTAMP)" | tail -n 9)
+        if [[ -n "$session_content" ]]; then
+            buildme_cmds="Recent buildme sessions:
+$session_content"
+        fi
+    elif [[ -f ~/.last_buildme_commands.sh ]]; then
+        # Fallback to old format
         local last_buildme=$(cat ~/.last_buildme_commands.sh | cut -d'|' -f2- 2>/dev/null | head -n 1)
         if [[ -n "$last_buildme" && "$last_buildme" != "head: |: No such file or directory" ]]; then
             buildme_cmds="Last buildme command:\n$last_buildme"
@@ -15,8 +22,11 @@ buildme_undo() {
     fi
     
     if [[ -f "$BUILDME_HISTORY_FILE" ]]; then
-        # Get unique recent commands, exclude buildme commands to avoid confusion
-        history_cmds="Recent terminal history:\n$(tail -n 20 "$BUILDME_HISTORY_FILE" | cut -d'|' -f2- | grep -v "^buildme" | tail -n 5)"
+        # Get only the single most recent meaningful command
+        local recent_cmd=$(tail -n 10 "$BUILDME_HISTORY_FILE" | cut -d'|' -f2- | grep -v "^buildme" | grep -v "source ~/.zshrc" | grep -v "cat ~/.last_buildme" | grep -v "rm ~/.last_buildme" | tail -n 1)
+        if [[ -n "$recent_cmd" ]]; then
+            history_cmds="Most recent command: $recent_cmd"
+        fi
     fi
     
     # If no useful history at all
@@ -26,32 +36,27 @@ buildme_undo() {
         return 1
     fi
     
-    # More focused prompt that avoids confusion
-    local undo_prompt="You are a shell expert. Look at the command history and suggest commands to undo the most recent operations.
+    # Very focused prompt - only undo the single most recent thing
+    local undo_prompt="You are a shell expert. Undo ONLY the most recent meaningful operation.
 
 RULES:
-- Output 1-5 shell commands only, one per line
-- No explanations, comments, or markdown
-- Focus on the MOST RECENT operations only  
-- For file/directory creation (mkdir, touch): suggest removal (rm -rf, rmdir)
-- For file removal (rm): warn that files cannot be restored or suggest trash recovery
-- For directory changes (cd): suggest returning to previous location
-- For git operations: suggest appropriate git undo (reset, revert, etc.)
-- For package installs (pip, npm, brew): suggest uninstall commands
-- For service operations: suggest opposite operation (start→stop, enable→disable)
-- For file copies/moves: suggest removal or reverse operation
-- For configuration changes: suggest restoring previous state
-- If snapshots were restored: suggest removing the restored directory
-- Be conservative but comprehensive - cover all types of state changes
+- Output 1-2 shell commands maximum, one per line
+- No explanations, no markdown  
+- Focus ONLY on the single most recent meaningful change
+- If there's a buildme session, undo that. Otherwise undo the most recent terminal command
+- Don't undo multiple operations - be surgical and precise
+- For file creation: suggest rm
+- For directory creation: suggest rm -rf  
+- For package installs: suggest uninstall (but only if very recent)
+- Skip anything older than the last meaningful operation
 
-Context: ${user_instruction:-"undo recent actions"}
+Context: ${user_instruction:-"undo the most recent action"}
 
 $buildme_cmds
 
 $history_cmds"
 
     echo "🧠 Asking LLM to suggest undo steps..."
-    
     local key=$(get_api_key "gpt")
     local undo_commands=$(buildme_generate "$undo_prompt" "$key" "gpt-4o-mini")
 

@@ -1,11 +1,19 @@
 buildme_run() {
   local script="$1"
+  local original_request="$2"  # New parameter for original user request
   echo ""
   echo "❓ Do you want to run these commands? [y/N]"
   read -r confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
     echo ""
-    echo "$(date '+%Y-%m-%d %H:%M:%S')|$script" > ~/.last_buildme_commands.sh
+    # Append to session file to track multiple related buildme commands
+    cat >> ~/.last_buildme_session.sh << EOF
+# Session entry $(date '+%Y-%m-%d %H:%M:%S')
+TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+ORIGINAL_REQUEST="$original_request"
+GENERATED_COMMANDS="$script"
+
+EOF
     eval "$script"
   else
     echo "🚫 Skipped running commands."
@@ -14,7 +22,16 @@ buildme_run() {
 
 buildme_run_stepwise() {
   local script="$1"
-  echo "$(date '+%Y-%m-%d %H:%M:%S')|$script" > ~/.last_buildme_commands.sh
+  local original_request="$2"  # New parameter for original user request
+  
+  # Append to session file to track multiple related buildme commands
+  cat >> ~/.last_buildme_session.sh << EOF
+# Session entry $(date '+%Y-%m-%d %H:%M:%S')
+TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+ORIGINAL_REQUEST="$original_request"
+GENERATED_COMMANDS="$script"
+
+EOF
 
   exec 3<&0
   local run_all=0
