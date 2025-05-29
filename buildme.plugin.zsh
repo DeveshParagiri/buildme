@@ -1,25 +1,16 @@
 # --- buildme.plugin.zsh ---
 
-# Get the directory where this plugin is located (more reliable for Oh-My-Zsh)
-if [[ -n "${(%):-%N}" ]]; then
-    # Use %N parameter expansion for zsh
-    BUILDME_PLUGIN_DIR="${${(%):-%N}:A:h}"
-elif [[ -n "${BASH_SOURCE[0]}" ]]; then
-    # Fallback for bash
-    BUILDME_PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-else
-    # Last resort - assume we're in the right directory
-    BUILDME_PLUGIN_DIR="$HOME/.oh-my-zsh/custom/plugins/buildme"
-fi
+# Get the directory where this plugin is located
+BUILDME_PLUGIN_DIR="${${(%):-%x}:A:h}"
 
 # Source the history tracking file
-[[ -f "$BUILDME_PLUGIN_DIR/buildme_history.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_history.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_history.zsh"
 # Source the starter functionality
-[[ -f "$BUILDME_PLUGIN_DIR/buildme_starter.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_starter.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_starter.zsh"
 # Source the record functionality
-[[ -f "$BUILDME_PLUGIN_DIR/buildme_record.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_record.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_record.zsh"
 # Source the snapshots functionality
-[[ -f "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh"
 
 # starter_dir="$HOME/.buildme_starters"
 # mkdir -p "$starter_dir"
