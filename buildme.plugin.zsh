@@ -46,13 +46,38 @@ buildme() {
 
   if [[ "$1" == "model" ]]; then
     shift
-    if [[ "$1" == "list" ]]; then
-      buildme_model_list
-      return 0
-    else
-      echo "❌ Unknown model command. Use: buildme model list"
-      return 1
-    fi
+    case "$1" in
+      list)
+        buildme_model_list
+        return 0
+        ;;
+      set)
+        shift
+        set_default_model "$1"
+        return 0
+        ;;
+      status)
+        show_model_status
+        return 0
+        ;;
+      clear)
+        clear_all_keys
+        return 0
+        ;;
+      "")
+        show_model_status
+        return 0
+        ;;
+      *)
+        echo "❌ Unknown model command: $1"
+        echo "Available commands:"
+        echo "  buildme model [status]    Show current model configuration"
+        echo "  buildme model list        List all available models"
+        echo "  buildme model set <name>  Set default model"
+        echo "  buildme model clear       Clear all API keys and reset config"
+        return 1
+        ;;
+    esac
   fi
 
   if [[ "$1" == "undo" ]]; then
@@ -93,7 +118,7 @@ buildme() {
     return 0
   fi
 
-  if [[ "$1" == "--help" ]]; then
+  if [[ "$1" == "help" || "$1" == "--help" ]]; then
     cat <<EOF
 
 🔧 buildme – generate shell workflows using AI
@@ -130,7 +155,10 @@ Starter Commands:
                       Delete a starter template
 
 Model Commands:
-  model list           Show all configured models and their availability
+  model [status]       Show current model configuration and API key status
+  model list           Show all available models and their status
+  model set <name>     Set default model (gpt-4o, gpt-4o-mini, deepseek, local, etc.)
+  model clear          Clear all stored API keys and reset configuration
 
 Record Commands:
   record start         Start recording terminal commands to a timestamped file
@@ -191,7 +219,7 @@ EOF
 
   local run=1
   local step=0
-  local model="gpt-4o-mini"
+  local model=$(get_default_model)
   local prompt=""
 
   while [[ $# -gt 0 ]]; do
@@ -208,7 +236,7 @@ EOF
   local key=$(get_api_key "$model")
   [[ -z "$key" ]] && echo "❌ API key not found. Run: buildme init" && return 1
 
-  echo "🧠 Thinking..."
+  echo "🧠 Thinking... (using $model)"
   local commands=$(buildme_generate "$prompt" "$key" "$model")
 
   echo ""
