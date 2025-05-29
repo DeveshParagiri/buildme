@@ -4,6 +4,8 @@
 source "${0:A:h}/buildme_history.zsh"
 # Source the starter functionality
 source "${0:A:h}/buildme_starter.zsh"
+# Source the record functionality
+source "${0:A:h}/buildme_record.zsh"
 
 # starter_dir="$HOME/.buildme_starters"
 # mkdir -p "$starter_dir"
@@ -399,6 +401,20 @@ buildme() {
     return 0
   fi
 
+  if [[ "$1" == "record" ]]; then
+    shift
+    case "$1" in
+      start) shift; buildme_record_start "$@" ;;
+      stop) buildme_record_stop ;;
+      list) buildme_record_list ;;
+      replay) shift; buildme_record_replay "$@" ;;
+      delete) shift; buildme_record_delete "$@" ;;
+      clear) buildme_record_clear ;;
+      *) echo "❌ Usage: buildme record {start [name]|stop|list|replay <name>|delete <name>|clear}" ;;
+    esac
+    return 0
+  fi
+
   if [[ "$1" == "--help" ]]; then
     cat <<EOF
 
@@ -417,6 +433,8 @@ Options:
   history [n]          Show last n commands (default: 10)
   clear-history        Clear command history
   model list           Show all available models and their status
+  record {start|stop|replay <file>}
+                      Manage terminal command recording
   --help               Show this help message
 
 Starter Commands:
@@ -430,6 +448,11 @@ Starter Commands:
 
 Model Commands:
   model list           Show all configured models and their availability
+
+Record Commands:
+  record start         Start recording terminal commands to a timestamped file
+  record stop          Stop recording and show where the session was saved
+  record replay <file> Show commands from a recorded session file
 
 Examples:
   buildme "create and activate a python virtualenv"
@@ -449,6 +472,11 @@ Examples:
   # History examples
   buildme history 20
   buildme clear-history
+  
+  # Record examples
+  buildme record start
+  buildme record stop
+  buildme record replay ~/.buildme_record_1748531751.sh
 
 EOF
     return 0
