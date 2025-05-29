@@ -1,19 +1,13 @@
 # --- buildme.plugin.zsh ---
 
-# Get the directory where this plugin is located
+
 BUILDME_PLUGIN_DIR="${${(%):-%x}:A:h}"
 
-# Source the history tracking file
-source "$BUILDME_PLUGIN_DIR/buildme_history.zsh"
-# Source the starter functionality
-source "$BUILDME_PLUGIN_DIR/buildme_starter.zsh"
-# Source the record functionality
-source "$BUILDME_PLUGIN_DIR/buildme_record.zsh"
-# Source the snapshots functionality
-source "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh"
 
-# starter_dir="$HOME/.buildme_starters"
-# mkdir -p "$starter_dir"
+source "$BUILDME_PLUGIN_DIR/buildme_history.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_starter.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_record.zsh"
+source "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh"
 
 get_openai_key() {
   if [[ -n "$OPENAI_API_KEY" ]]; then
@@ -95,6 +89,7 @@ buildme_init() {
     return 1
   fi
 }
+
 
 buildme_generate() {
   local prompt="$1"
@@ -553,6 +548,7 @@ EOF
   echo "──────────────────────────────"
   echo "$commands" \
     | sed 's/^```bash//; s/^```//g' \
+    | sed 's/^`\(.*\)`$/\1/' \
     | tr '&' '\n' \
     | sed 's/&&/&&/g' \
     | sed '/^$/d' \
