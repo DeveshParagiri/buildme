@@ -133,7 +133,8 @@ buildme_run() {
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
     echo ""
     echo "$(date '+%Y-%m-%d %H:%M:%S')|$script" > ~/.last_buildme_commands.sh
-    zsh -i -c "$script"
+    # zsh -i -c "$script"
+    eval "$script"
   else
     echo "🚫 Skipped running commands."
   fi
@@ -152,7 +153,8 @@ buildme_run_stepwise() {
     echo "➡️  $line"
 
     if [[ "$run_all" -eq 1 ]]; then
-      zsh -i -c "$line"
+      # zsh -i -c "$line"
+      eval "$line"
       continue
     fi
 
@@ -160,9 +162,9 @@ buildme_run_stepwise() {
     read -r confirm <&3
 
     case "$confirm" in
-      [Yy]|"") zsh -i -c "$line" ;;
+      [Yy]|"") eval "$line" ;;
       [Nn]) echo "⏭️  Skipped." ;;
-      [Aa]) run_all=1; zsh -i -c "$line" ;;
+      [Aa]) run_all=1; eval "$line" ;;
       [Qq]) echo "👋 Exiting."; break ;;
       *) echo "❓ Unknown choice, skipping." ;;
     esac
