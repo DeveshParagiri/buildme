@@ -1,11 +1,25 @@
 # --- buildme.plugin.zsh ---
 
+# Get the directory where this plugin is located (more reliable for Oh-My-Zsh)
+if [[ -n "${(%):-%N}" ]]; then
+    # Use %N parameter expansion for zsh
+    BUILDME_PLUGIN_DIR="${${(%):-%N}:A:h}"
+elif [[ -n "${BASH_SOURCE[0]}" ]]; then
+    # Fallback for bash
+    BUILDME_PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    # Last resort - assume we're in the right directory
+    BUILDME_PLUGIN_DIR="$HOME/.oh-my-zsh/custom/plugins/buildme"
+fi
+
 # Source the history tracking file
-source "${0:A:h}/buildme_history.zsh"
+[[ -f "$BUILDME_PLUGIN_DIR/buildme_history.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_history.zsh"
 # Source the starter functionality
-source "${0:A:h}/buildme_starter.zsh"
+[[ -f "$BUILDME_PLUGIN_DIR/buildme_starter.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_starter.zsh"
 # Source the record functionality
-source "${0:A:h}/buildme_record.zsh"
+[[ -f "$BUILDME_PLUGIN_DIR/buildme_record.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_record.zsh"
+# Source the snapshots functionality
+[[ -f "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh" ]] && source "$BUILDME_PLUGIN_DIR/buildme_snapshots.zsh"
 
 # starter_dir="$HOME/.buildme_starters"
 # mkdir -p "$starter_dir"
@@ -415,6 +429,18 @@ buildme() {
     return 0
   fi
 
+  if [[ "$1" == "snapshot" ]]; then
+    shift
+    buildme_snapshot "$@"
+    return 0
+  fi
+
+  if [[ "$1" == "restore" ]]; then
+    shift
+    buildme_snapshot_restore "$@"
+    return 0
+  fi
+
   if [[ "$1" == "--help" ]]; then
     cat <<EOF
 
@@ -435,6 +461,10 @@ Options:
   model list           Show all available models and their status
   record {start|stop|replay <file>}
                       Manage terminal command recording
+  snapshot {<name>|list|delete <name>}
+                      Manage directory snapshots
+  restore <name|path> [--to <path>] [--overwrite] [--dry-run]
+                      Restore a directory snapshot
   --help               Show this help message
 
 Starter Commands:
@@ -453,6 +483,19 @@ Record Commands:
   record start         Start recording terminal commands to a timestamped file
   record stop          Stop recording and show where the session was saved
   record replay <file> Show commands from a recorded session file
+
+Snapshot Commands:
+  snapshot <name>      Create a snapshot of the current directory
+  snapshot list        List all available snapshots
+  snapshot delete <name>
+                      Delete a snapshot by name
+  restore <name|path>  Restore a snapshot to ./restored_<name>/
+  restore <name> --to <path>
+                      Restore a snapshot to a specific directory
+  restore <name> --overwrite
+                      Restore a snapshot to the current directory
+  restore <name> --dry-run
+                      List snapshot contents without extracting
 
 Examples:
   buildme "create and activate a python virtualenv"
@@ -479,6 +522,14 @@ Examples:
   buildme record list
   buildme record replay <name>
   buildme record rename <old> <new>
+  
+  # Snapshot examples
+  buildme snapshot before-changes
+  buildme snapshot list
+  buildme restore before-changes
+  buildme restore before-changes --to ~/backup/
+  buildme restore before-changes --dry-run
+  buildme snapshot delete old-snapshot
 
 EOF
     return 0
