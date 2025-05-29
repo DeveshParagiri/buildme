@@ -4,15 +4,37 @@
 BUILDME_HISTORY_FILE="$HOME/.buildme_history"
 touch "$BUILDME_HISTORY_FILE"
 
+# Function to deduplicate history
+buildme_dedupe_history() {
+    if [[ -f "$BUILDME_HISTORY_FILE" ]]; then
+        # Create a temporary file with unique commands (keeping the latest timestamp for each)
+        awk -F'|' '!seen[$2]++ {latest[$2] = $0} seen[$2] == 1 {delete latest[$2]; latest[$2] = $0} END {for (cmd in latest) print latest[cmd]}' "$BUILDME_HISTORY_FILE" | sort -t'|' -k1 > "${BUILDME_HISTORY_FILE}.tmp"
+        mv "${BUILDME_HISTORY_FILE}.tmp" "$BUILDME_HISTORY_FILE"
+    fi
+}
+
 # Function to track commands
 buildme_track_command() {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "$timestamp|$1" >> "$BUILDME_HISTORY_FILE"
+    local command="$1"
     
-    # Keep only last 1000 commands (with basic concurrency safety)
-    if (( RANDOM % 10 == 0 )); then
-        if [[ $(wc -l < "$BUILDME_HISTORY_FILE") -gt 1000 ]]; then
-            tail -n 1000 "$BUILDME_HISTORY_FILE" > "${BUILDME_HISTORY_FILE}.tmp"
+    # Skip if the exact same command was run in the last 5 seconds
+    if [[ -f "$BUILDME_HISTORY_FILE" ]]; then
+        local last_entry=$(tail -n 1 "$BUILDME_HISTORY_FILE")
+        if [[ "$last_entry" == *"|$command" ]]; then
+            return 0  # Skip duplicate
+        fi
+    fi
+    
+    echo "$timestamp|$command" >> "$BUILDME_HISTORY_FILE"
+    
+    # Occasionally clean up duplicates and limit size
+    if (( RANDOM % 20 == 0 )); then
+        buildme_dedupe_history
+        
+        # Keep only last 500 commands after deduplication
+        if [[ $(wc -l < "$BUILDME_HISTORY_FILE") -gt 500 ]]; then
+            tail -n 500 "$BUILDME_HISTORY_FILE" > "${BUILDME_HISTORY_FILE}.tmp"
             mv "${BUILDME_HISTORY_FILE}.tmp" "$BUILDME_HISTORY_FILE"
         fi
     fi
@@ -49,6 +71,22 @@ buildme_clear_history() {
         touch "$BUILDME_HISTORY_FILE"
         echo "✅ Command history cleared."
     fi
+}
+
+# New function to clean history without clearing it completely
+buildme_clean_history() {
+    if [[ ! -f "$BUILDME_HISTORY_FILE" ]]; then
+        echo "⚠️  No command history found."
+        return 1
+    fi
+    
+    local original_count=$(wc -l < "$BUILDME_HISTORY_FILE")
+    buildme_dedupe_history
+    local new_count=$(wc -l < "$BUILDME_HISTORY_FILE")
+    local removed=$((original_count - new_count))
+    
+    echo "✅ Command history cleaned."
+    echo "📊 Removed $removed duplicate entries ($original_count → $new_count commands)"
 }
 
 # New function for undo from history
