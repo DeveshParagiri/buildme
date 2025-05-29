@@ -112,6 +112,61 @@ buildme_generate() {
           -H "Authorization: Bearer $key" \
           -H "Content-Type: application/json" \
           -d @- | jq -r '.choices[0].message.content'
+  elif [[ "$model" == "local" ]]; then
+    # Use a simplified but effective system prompt for local models
+    local local_system_prompt="You are a CLI command generator. Generate ONLY shell commands.
+
+RULES:
+- Output format: command_here
+- NO explanations or extra text
+- Use full paths when needed
+- For Oh My Zsh: ~/.oh-my-zsh/ is the base path
+- macOS user, use brew for packages
+- Multiple commands: join with &&
+
+EXAMPLES:
+change directory to home: cd ~
+list files: ls -la
+install package: brew install package_name
+go to oh-my-zsh custom plugins: cd ~/.oh-my-zsh/custom/plugins
+
+Generate the command:"
+
+    # Create JSON manually to avoid escaping issues
+    local temp_file=$(mktemp)
+    cat > "$temp_file" << EOF
+{
+  "model": "TheBloke/phi-2-GGUF",
+  "temperature": 0.1,
+  "max_tokens": 100,
+  "stream": false,
+  "messages": [
+    {
+      "role": "system",
+      "content": "$(echo "$local_system_prompt" | sed 's/"/\\"/g' | tr '\n' ' ')"
+    },
+    {
+      "role": "user",
+      "content": "$prompt"
+    }
+  ]
+}
+EOF
+    
+    local response
+    response=$(curl -s http://localhost:1234/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -d @"$temp_file")
+    
+    # Clean up temp file
+    rm -f "$temp_file"
+    
+    # Extract and clean the response
+    local content
+    content=$(echo "$response" | jq -r '.choices[0].message.content // empty')
+    
+    # Clean up the response (remove any extra formatting)
+    echo "$content" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | head -n 1
   else
     jq -n \
       --arg model "$model" \
@@ -244,6 +299,61 @@ $history_cmds"
     fi
 }
 
+buildme_model_list() {
+  echo "🤖 Available Models:"
+  echo "══════════════════════════════════════════════════════════════"
+  
+  # Check OpenAI models
+  local openai_key=$(get_openai_key 2>/dev/null)
+  if [[ -n "$openai_key" ]]; then
+    echo "✅ OpenAI Models (configured):"
+    echo "   • gpt-4o-mini (default)"
+    echo "   • gpt-4o"
+    echo "   • gpt-3.5-turbo"
+    echo "   • gpt-4-turbo"
+  else
+    echo "❌ OpenAI Models (not configured):"
+    echo "   • gpt-4o-mini, gpt-4o, gpt-3.5-turbo, gpt-4-turbo"
+    echo "   💡 Run 'buildme init' to configure"
+  fi
+  
+  echo ""
+  
+  # Check DeepSeek model
+  local deepseek_key=$(get_deepseek_key 2>/dev/null)
+  if [[ -n "$deepseek_key" ]]; then
+    echo "✅ DeepSeek Model (configured):"
+    echo "   • deepseek"
+  else
+    echo "❌ DeepSeek Model (not configured):"
+    echo "   • deepseek"
+    echo "   💡 Run 'buildme init' to configure"
+  fi
+  
+  echo ""
+  
+  # Check Local model
+  if curl -s --connect-timeout 2 http://localhost:1234/v1/models >/dev/null 2>&1; then
+    echo "✅ Local Model (available):"
+    echo "   • local (running on localhost:1234)"
+    
+    # Try to get the actual model name
+    local model_info
+    model_info=$(curl -s --connect-timeout 2 http://localhost:1234/v1/models 2>/dev/null | jq -r '.data[0].id // empty' 2>/dev/null)
+    if [[ -n "$model_info" && "$model_info" != "null" ]]; then
+      echo "   📋 Current model: $model_info"
+    fi
+  else
+    echo "❌ Local Model (not available):"
+    echo "   • local (no server detected on localhost:1234)"
+    echo "   💡 Start your local LLM server (e.g., LM Studio, Ollama)"
+  fi
+  
+  echo ""
+  echo "Usage: buildme --model <model_name> \"your prompt\""
+  echo "Example: buildme --model deepseek \"create a python file\""
+}
+
 buildme() {
   if [[ "$1" == "init" ]]; then
     buildme_init
@@ -265,6 +375,17 @@ buildme() {
     shift
     buildme_starter "$@"
     return 0
+  fi
+
+  if [[ "$1" == "model" ]]; then
+    shift
+    if [[ "$1" == "list" ]]; then
+      buildme_model_list
+      return 0
+    else
+      echo "❌ Unknown model command. Use: buildme model list"
+      return 1
+    fi
   fi
 
   if [[ "$1" == "undo" ]]; then
@@ -289,12 +410,13 @@ Usage:
 Options:
   -r, --run            Auto-run the generated commands after confirmation
   --step               Run each command one-by-one with confirmation
-  --model <name>       Choose model (gpt-4o-mini, deepseek, gpt-3.5-turbo, etc.)
+  --model <name>       Choose model (gpt-4o-mini, deepseek, local, gpt-3.5-turbo, etc.)
   init                 Interactive setup for API keys (OpenAI / DeepSeek)
   undo [description]   Try to undo last buildme command with optional guidance
   starter <cmd>        Manage project starters
   history [n]          Show last n commands (default: 10)
   clear-history        Clear command history
+  model list           Show all available models and their status
   --help               Show this help message
 
 Starter Commands:
@@ -306,10 +428,15 @@ Starter Commands:
   starter delete <name>
                       Delete a starter template
 
+Model Commands:
+  model list           Show all configured models and their availability
+
 Examples:
   buildme "create and activate a python virtualenv"
   buildme --step "install packages and update requirements"
   buildme --model deepseek "set up a React project"
+  buildme --model local "change to home directory"
+  buildme model list
   buildme undo "remove the files we just created"
   
   # Starter examples
