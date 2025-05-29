@@ -58,8 +58,6 @@ Optionally describe what to undo:
 buildme undo "remove venv folder"
 ```
 
-⸻
-
 ### 🚀 Project Starters
 
 Create a new project from a template:
@@ -182,11 +180,9 @@ lib/                       # Helpers and utilities
 
 ## 🔮 Coming Soon
 
-```bash
-	•	📤 buildme share — Export and share setup steps with your team
-	•	🧠 buildme explain — Understand any terminal command or file
-	•	🌐 Bash + Fish shell support
-```
+- 📤 buildme share — Export and share setup steps with your team
+- 🧠 buildme explain — Understand any terminal command or file
+- 🌐 Bash + Fish shell support
 
 ## 🤝 Contributing
 
