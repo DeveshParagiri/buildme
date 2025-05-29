@@ -56,6 +56,9 @@ buildme_record_list() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
   local found=0
+  # Use nullglob to prevent error when no matches
+  setopt local_options nullglob
+  
   for file in "$HOME"/.buildme_record_*.sh; do
     if [[ -f "$file" ]]; then
       found=1
@@ -86,9 +89,21 @@ buildme_record_list() {
 }
 
 buildme_record_replay() {
-  local input="$1"
+  local input=""
+  local run_mode=false
+  local step_mode=false
+  
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --run) run_mode=true; shift ;;
+      --step) step_mode=true; shift ;;
+      *) input="$1"; shift ;;
+    esac
+  done
+  
   if [[ -z "$input" ]]; then
-    echo "❌ Usage: buildme record replay <name_or_file>"
+    echo "❌ Usage: buildme record replay [--run|--step] <name>"
     echo "💡 Use: buildme record list to see available recordings"
     return 1
   fi
@@ -123,9 +138,8 @@ buildme_record_replay() {
     fi
   fi
   
-  echo "🔁 Commands from $(basename "$file"):"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  
+  # Extract commands
+  local commands=()
   while IFS= read -r line; do
     # Skip empty lines and comments
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
@@ -144,11 +158,73 @@ buildme_record_replay() {
         continue
       fi
       
-      echo "➡️  $cmd"
+      commands+=("$cmd")
     fi
   done < "$file"
   
+  if [[ ${#commands[@]} -eq 0 ]]; then
+    echo "❌ No commands found in recording"
+    return 1
+  fi
+  
+  # Show preview
+  echo "🔁 Commands from $(basename "$file"):"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  for cmd in "${commands[@]}"; do
+    echo "➡️  $cmd"
+  done
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
+  # Handle execution
+  if [[ "$run_mode" == true ]]; then
+    # Run mode: execute all with single confirmation
+    echo ""
+    echo "❓ Execute all ${#commands[@]} commands? [y/N]"
+    read -r confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      for cmd in "${commands[@]}"; do
+        echo "🚀 $cmd"
+        if eval "$cmd"; then
+          echo ""  # Add space before success
+          echo "✅ Success"
+        else
+          echo ""  # Add space before failure
+          echo "❌ Command failed: $cmd"
+        fi
+      done
+      echo "🏁 All commands completed"
+    else
+      echo "🚫 Execution cancelled"
+    fi
+  else
+    # Default/step mode: step-by-step with confirmation
+    echo ""
+    for cmd in "${commands[@]}"; do
+      echo "🚀 Execute: $cmd"
+      echo -n "❓ Run this command? [y/N/q] "
+      read -r confirm
+      
+      case "$confirm" in
+        [Yy]*)
+          if eval "$cmd"; then
+            echo ""  # Add space before success
+            echo "✅ Success"
+          else
+            echo ""  # Add space before failure
+            echo "❌ Command failed"
+          fi
+          ;;
+        [Qq]*)
+          echo "🛑 Stopped by user"
+          return 0
+          ;;
+        *)
+          echo "⏭️  Skipped"
+          ;;
+      esac
+      echo ""
+    done
+  fi
 }
 
 buildme_record_delete() {
@@ -215,5 +291,53 @@ buildme_record_clear() {
     echo "🗑️  Deleted all recordings"
   else
     echo "❌ Deletion cancelled"
+  fi
+}
+
+buildme_record_rename() {
+  local input="$1"
+  local new_name="$2"
+  
+  if [[ -z "$input" ]]; then
+    echo "❌ Usage: buildme record rename <current_name> <new_name>"
+    return 1
+  fi
+  
+  if [[ -z "$new_name" ]]; then
+    echo "❌ Please provide a new name"
+    return 1
+  fi
+  
+  # Find the file
+  local file=""
+  local found_files=()
+  for f in "$HOME"/.buildme_record_*"$input"*_*.sh; do
+    if [[ -f "$f" ]]; then
+      found_files+=("$f")
+    fi
+  done
+  
+  if [[ ${#found_files[@]} -eq 0 ]]; then
+    echo "❌ No recording found matching: $input"
+    return 1
+  elif [[ ${#found_files[@]} -gt 1 ]]; then
+    echo "❌ Multiple recordings match '$input'"
+    return 1
+  else
+    file="${found_files[1]}"
+  fi
+  
+  # Extract timestamp from old filename
+  local basename=$(basename "$file")
+  if [[ "$basename" =~ ^\.buildme_record_(.+)_([0-9]+)\.sh$ ]]; then
+    local timestamp="${match[2]}"
+    new_name=$(echo "$new_name" | sed 's/[^a-zA-Z0-9_-]/_/g')  # sanitize
+    local new_file="$HOME/.buildme_record_${new_name}_${timestamp}.sh"
+    
+    mv "$file" "$new_file"
+    echo "📝 Renamed to: $new_name"
+  else
+    echo "❌ Could not parse filename format"
+    return 1
   fi
 }

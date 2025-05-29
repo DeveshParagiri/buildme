@@ -410,7 +410,8 @@ buildme() {
       replay) shift; buildme_record_replay "$@" ;;
       delete) shift; buildme_record_delete "$@" ;;
       clear) buildme_record_clear ;;
-      *) echo "❌ Usage: buildme record {start [name]|stop|list|replay <name>|delete <name>|clear}" ;;
+      rename) shift; buildme_record_rename "$@" ;;
+      *) echo "❌ Usage: buildme record {start [name]|stop|list|replay [--run|--step] <name>|delete <name>|clear|rename <old> <new>}" ;;
     esac
     return 0
   fi
@@ -474,9 +475,11 @@ Examples:
   buildme clear-history
   
   # Record examples
-  buildme record start
+  buildme record start <name>
   buildme record stop
-  buildme record replay ~/.buildme_record_1748531751.sh
+  buildme record list
+  buildme record replay <name>
+  buildme record rename <old> <new>
 
 EOF
     return 0
