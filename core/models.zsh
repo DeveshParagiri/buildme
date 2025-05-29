@@ -146,38 +146,41 @@ show_model_status() {
   echo "🤖 Current Model Configuration:"
   echo "══════════════════════════════"
   echo "📌 Default model: $default_model"
+  echo ""
   
-  # Show which API key would be used
-  local key_source=""
-  case "$default_model" in
-    gpt-*|gpt4*)
-      if get_openai_key >/dev/null 2>&1; then
-        key_source="✅ OpenAI API key configured"
-      else
-        key_source="❌ OpenAI API key not configured"
-      fi
-      ;;
-    deepseek)
-      if get_deepseek_key >/dev/null 2>&1; then
-        key_source="✅ DeepSeek API key configured"
-      else
-        key_source="❌ DeepSeek API key not configured"
-      fi
-      ;;
-    local)
-      if curl -s --connect-timeout 2 http://localhost:1234/v1/models >/dev/null 2>&1; then
-        key_source="✅ Local server running on localhost:1234"
-      else
-        key_source="❌ Local server not available"
-      fi
-      ;;
-  esac
+  # Show OpenAI status
+  if get_openai_key >/dev/null 2>&1; then
+    echo "🔑 OpenAI API: ✅ Configured"
+  else
+    echo "🔑 OpenAI API: ❌ Not configured"
+  fi
   
-  echo "🔑 API status: $key_source"
+  # Show DeepSeek status  
+  if get_deepseek_key >/dev/null 2>&1; then
+    echo "🔑 DeepSeek API: ✅ Configured"
+  else
+    echo "🔑 DeepSeek API: ❌ Not configured"
+  fi
+  
+  # Show Local server status
+  if curl -s --connect-timeout 2 http://localhost:1234/v1/models >/dev/null 2>&1; then
+    echo "🔑 Local Server: ✅ Running on localhost:1234"
+    
+    # Try to get the actual model name
+    local model_info
+    model_info=$(curl -s --connect-timeout 2 http://localhost:1234/v1/models 2>/dev/null | jq -r '.data[0].id // empty' 2>/dev/null)
+    if [[ -n "$model_info" && "$model_info" != "null" ]]; then
+      echo "   📋 Current model: $model_info"
+    fi
+  else
+    echo "🔑 Local Server: ❌ Not available on localhost:1234"
+  fi
+  
   echo ""
   echo "Commands:"
   echo "  buildme model set <name>     Set default model"
   echo "  buildme model list           List all available models"
+  echo "  buildme model clear          Clear all API keys and reset config"
   echo "  buildme --model <name> ...   Use specific model for one command"
 }
 
