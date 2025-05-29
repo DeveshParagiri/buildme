@@ -204,28 +204,27 @@ buildme_run_stepwise() {
   exec 3<&0
   local run_all=0
 
-  while IFS= read -r line; do
+  # Split commands on && and process each one
+  echo "$script" | sed 's/ && /\n/g' | while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+
+    # Clean up any leading/trailing whitespace
+    line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [[ -z "$line" ]] && continue
 
     echo "➡️  $line"
-
-    if [[ "$run_all" -eq 1 ]]; then
-      # zsh -i -c "$line"
-      eval "$line"
-      continue
-    fi
-
-    echo -n "?Run this? [y/n/a/q] "
+    echo -n "❓ Run this? [y/N/a/q] "
     read -r confirm <&3
 
     case "$confirm" in
       [Yy]|"") eval "$line" ;;
       [Nn]) echo "⏭️  Skipped." ;;
       [Aa]) run_all=1; eval "$line" ;;
-      [Qq]) echo "👋 Exiting."; break ;;
+      [Qq]) echo "👋 Exiting"; break ;;
       *) echo "❓ Unknown choice, skipping." ;;
     esac
-  done <<< "$script"
+    echo ""
+  done
 
   exec 0<&3
 }

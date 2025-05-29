@@ -199,23 +199,44 @@ buildme_record_replay() {
   else
     # Default/step mode: step-by-step with confirmation
     echo ""
+    local run_all=0
+    
     for cmd in "${commands[@]}"; do
-      echo "🚀 Execute: $cmd"
-      echo -n "❓ Run this command? [y/N/q] "
+      echo "➡️  $cmd"
+      
+      if [[ "$run_all" -eq 1 ]]; then
+        eval "$cmd"
+        echo ""
+        echo "✅ Success"
+        echo ""
+        continue
+      fi
+      
+      echo -n "❓ Run this? [y/N/a/q] "
       read -r confirm
       
       case "$confirm" in
         [Yy]*)
           if eval "$cmd"; then
-            echo ""  # Add space before success
+            echo ""
             echo "✅ Success"
           else
-            echo ""  # Add space before failure
+            echo ""
+            echo "❌ Command failed"
+          fi
+          ;;
+        [Aa]*)
+          run_all=1
+          if eval "$cmd"; then
+            echo ""
+            echo "✅ Success"
+          else
+            echo ""
             echo "❌ Command failed"
           fi
           ;;
         [Qq]*)
-          echo "🛑 Stopped by user"
+          echo "👋 Exiting"
           return 0
           ;;
         *)
