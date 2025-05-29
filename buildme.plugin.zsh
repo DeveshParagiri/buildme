@@ -225,9 +225,9 @@ EOF
 
   if [[ "$run" -eq 1 ]]; then
     if [[ "$step" -eq 1 ]]; then
-      buildme_run_stepwise "$commands"
+      buildme_run_stepwise "$commands" "$prompt"
     else
-      buildme_run "$commands"
+      buildme_run "$commands" "$prompt"
     fi
   fi
 }

@@ -1,11 +1,11 @@
 # buildme_starter.zsh
 
 # Constants
-# STARTER_DIR="${0:A:h}/starters"
+STARTER_DIR="$BUILDME_PLUGIN_DIR/starters"
 USER_STARTER_DIR="$HOME/.buildme_starters"
 
-# Ensure directories exist
-mkdir -p "$STARTER_DIR" "$USER_STARTER_DIR"
+# Ensure directories exist - only create USER_STARTER_DIR since STARTER_DIR might not exist
+mkdir -p "$USER_STARTER_DIR"
 
 # Helper function to get starter path
 get_starter_path() {
