@@ -1,7 +1,7 @@
 # buildme_starter.zsh
 
 # Constants
-STARTER_DIR="${0:A:h}/starters"
+# STARTER_DIR="${0:A:h}/starters"
 USER_STARTER_DIR="$HOME/.buildme_starters"
 
 # Ensure directories exist
