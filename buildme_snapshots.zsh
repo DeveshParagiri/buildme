@@ -336,7 +336,7 @@ buildme_snapshot_restore() {
         echo "🧪 Dry run (listing contents):"
         echo "──────────────────────────────"
         if tar -tzf "$snapshot_file" 2>/dev/null | head -20; then
-            local total_files=$(tar -tzf "$snapshot_file" 2>/dev/null | wc -l)
+            local total_files=$(tar -tzf "$snapshot_file" 2>/dev/null | wc -l | tr -d ' ')
             if [[ "$total_files" -gt 20 ]]; then
                 echo "... and $((total_files - 20)) more files"
             fi
