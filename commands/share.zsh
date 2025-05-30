@@ -1,14 +1,29 @@
 # --- share.zsh ---
 
 buildme_share() {
+    # Handle subcommands first
+    case "${1:-}" in
+        "list")
+            list_workflow_files
+            return $?
+            ;;
+        "delete")
+            shift
+            delete_workflow_file "$@"
+            return $?
+            ;;
+        "clean")
+            clean_all_workflows
+            return $?
+            ;;
+    esac
+    
     local workflow_name=""
     local use_session=false
     local use_history=false
     local history_lines=10
     local target_os=""
-    local format="markdown"
     local include_env=true
-    local include_output=false
     local no_ai_summary=false
     local dry_run=false
     local filter_meaningful=true
@@ -37,26 +52,12 @@ buildme_share() {
                 fi
                 shift
                 ;;
-            --format)
-                if [[ -n "$2" ]]; then
-                    format="$2"
-                    shift
-                else
-                    echo "❌ --format requires type (markdown|json)"
-                    return 1
-                fi
-                shift
-                ;;
             --no-ai-summary)
                 no_ai_summary=true
                 shift
                 ;;
             --include-env)
                 include_env=true
-                shift
-                ;;
-            --include-output)
-                include_output=true
                 shift
                 ;;
             --dry-run)
@@ -137,14 +138,10 @@ buildme_share() {
         fi
     fi
     
-    echo "📝 Generating documentation in $format format..."
+    echo "📝 Generating documentation in markdown format..."
     
     local markdown_content
-    if [[ "$format" == "markdown" ]]; then
-        markdown_content=$(generate_workflow_markdown "$workflow_data" "$workflow_title" "$data_source" "$include_env" "$include_output" "$no_ai_summary" "$target_os" "$conversion_notes")
-    elif [[ "$format" == "json" ]]; then
-        markdown_content=$(generate_workflow_json "$workflow_data" "$workflow_title" "$data_source" "$include_env" "$include_output")
-    fi
+    markdown_content=$(generate_workflow_markdown "$workflow_data" "$workflow_title" "$data_source" "$include_env" "$no_ai_summary" "$target_os" "$conversion_notes")
     
     if [[ "$dry_run" == true ]]; then
         echo "🔍 Dry run - would share:"
@@ -157,9 +154,9 @@ buildme_share() {
     
     local timestamp=$(date +"%Y-%m-%d-%H-%M")
     local filename="$workflow_title-$timestamp.md"
-    local filepath="./buildme-workflows/$filename"
+    local filepath="$HOME/buildme-workflows/$filename"
     
-    mkdir -p "./buildme-workflows"
+    mkdir -p "$HOME/buildme-workflows"
     echo "$markdown_content" > "$filepath"
     
     copy_to_clipboard "$markdown_content"
@@ -416,10 +413,9 @@ generate_workflow_markdown() {
     local workflow_title="$2"
     local data_source="$3"
     local include_env="$4"
-    local include_output="$5"
-    local no_ai_summary="$6"
-    local target_os="$7"
-    local conversion_notes="$8"
+    local no_ai_summary="$5"
+    local target_os="$6"
+    local conversion_notes="$7"
     
     local start_time=""
     local end_time=""
@@ -442,14 +438,10 @@ generate_workflow_markdown() {
         elif [[ "$line" =~ ^COMMAND:(.+)$ ]]; then
             local command="${match[1]}"
             local cmd_status=""
-            local output=""
             local timestamp=""
             
             if IFS= read -r next_line && [[ "$next_line" =~ ^STATUS:(.+)$ ]]; then
                 cmd_status="${match[1]}"
-            fi
-            if [[ "$include_output" == "true" ]] && IFS= read -r next_line && [[ "$next_line" =~ ^OUTPUT:(.+)$ ]]; then
-                output="${match[1]}"
             fi
             if IFS= read -r next_line && [[ "$next_line" =~ ^TIMESTAMP:(.+)$ ]]; then
                 timestamp="${match[1]}"
@@ -465,11 +457,6 @@ generate_workflow_markdown() {
             commands_section+="### $counter. Command execution\n"
             commands_section+="\`\`\`bash\n$command\n\`\`\`\n"
             commands_section+="$status_icon **$status_text**"
-            
-            if [[ -n "$output" && "$include_output" == "true" ]]; then
-                commands_section+=" - Output: \`$output\`"
-            fi
-            
             commands_section+="\n\n"
             ((counter++))
         fi
@@ -850,4 +837,130 @@ convert_single_command_basic() {
     esac
     
     echo "$converted"
+}
+
+list_workflow_files() {
+    local workflow_dir="$HOME/buildme-workflows"
+    
+    if [[ ! -d "$workflow_dir" ]]; then
+        echo "📂 No workflows directory found"
+        echo "💡 Generate some workflows first with: buildme share --session"
+        return 0
+    fi
+    
+    local count=0
+    echo "📋 Generated Workflow Files:"
+    echo "════════════════════════════════════════════════════════════"
+    
+    for file in "$workflow_dir"/*.md; do
+        if [[ -f "$file" ]]; then
+            local basename=$(basename "$file" .md)
+            local size=$(du -h "$file" 2>/dev/null | cut -f1)
+            local date=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" "$file" 2>/dev/null || date -r "$file" "+%Y-%m-%d %H:%M" 2>/dev/null || echo "unknown")
+            
+            echo "  📄 $basename"
+            echo "     Size: $size | Created: $date"
+            echo "     Path: $file"
+            echo ""
+            ((count++))
+        fi
+    done
+    
+    if [[ $count -eq 0 ]]; then
+        echo "  No workflow files found"
+        echo ""
+        echo "💡 Generate workflows with:"
+        echo "   • buildme share --session"
+        echo "   • buildme share --history 10" 
+        echo "   • buildme share <recording-name>"
+    else
+        echo "Total: $count workflow files"
+        echo ""
+        echo "🗑️  Manage workflows:"
+        echo "   • buildme share delete <name>    - Delete specific workflow"
+        echo "   • buildme share clean           - Delete all workflows"
+    fi
+}
+
+delete_workflow_file() {
+    local name="$1"
+    local workflow_dir="$HOME/buildme-workflows"
+    
+    if [[ -z "$name" ]]; then
+        echo "❌ Usage: buildme share delete <workflow-name>"
+        echo "💡 Use 'buildme share list' to see available workflows"
+        return 1
+    fi
+    
+    if [[ ! -d "$workflow_dir" ]]; then
+        echo "❌ No workflows directory found"
+        return 1
+    fi
+    
+    # Find matching files (support partial names)
+    local matches=()
+    for file in "$workflow_dir"/*"$name"*.md; do
+        if [[ -f "$file" ]]; then
+            matches+=("$file")
+        fi
+    done
+    
+    if [[ ${#matches[@]} -eq 0 ]]; then
+        echo "❌ No workflow found matching: $name"
+        echo "💡 Use 'buildme share list' to see available workflows"
+        return 1
+    elif [[ ${#matches[@]} -gt 1 ]]; then
+        echo "❌ Multiple workflows match '$name':"
+        for match in "${matches[@]}"; do
+            echo "  - $(basename "$match" .md)"
+        done
+        echo "💡 Be more specific with the name"
+        return 1
+    fi
+    
+    local file_to_delete="${matches[0]}"
+    local file_name=$(basename "$file_to_delete" .md)
+    
+    echo "🗑️  Delete workflow: $file_name"
+    echo "📁 File: $file_to_delete"
+    echo ""
+    read -r "?Are you sure? [y/N]: " confirm
+    
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        rm "$file_to_delete"
+        echo "✅ Deleted workflow: $file_name"
+    else
+        echo "🚫 Deletion cancelled"
+    fi
+}
+
+clean_all_workflows() {
+    local workflow_dir="$HOME/buildme-workflows"
+    
+    if [[ ! -d "$workflow_dir" ]]; then
+        echo "📂 No workflows directory found"
+        return 0
+    fi
+    
+    local count=$(find "$workflow_dir" -name "*.md" -type f | wc -l | tr -d ' ')
+    
+    if [[ $count -eq 0 ]]; then
+        echo "📂 No workflow files to clean"
+        return 0
+    fi
+    
+    echo "🗑️  Clean all workflows"
+    echo "📁 Directory: $workflow_dir"
+    echo "📊 Files to delete: $count workflow files"
+    echo ""
+    echo "⚠️  This will delete ALL generated workflow markdown files!"
+    read -r "?Are you sure? [y/N]: " confirm
+    
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        rm "$workflow_dir"/*.md 2>/dev/null
+        echo "✅ Deleted all $count workflow files"
+        echo "📂 Directory kept (empty): $workflow_dir"
+    else
+        echo "🚫 Cleanup cancelled"
+    fi
 }

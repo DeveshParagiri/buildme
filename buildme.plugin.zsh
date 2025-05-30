@@ -175,6 +175,7 @@ Options:
                       Manage directory snapshots
   restore <name|path> [--to <path>] [--overwrite] [--dry-run]
                       Restore a directory snapshot
+  share <source>       Generate and share workflow documentation
   --help               Show this help message
 
 Starter Commands:
@@ -193,9 +194,15 @@ Model Commands:
   model clear          Clear all stored API keys and reset configuration
 
 Record Commands:
-  record start         Start recording terminal commands to a timestamped file
+  record start [name]  Start recording terminal commands (optionally with name)
   record stop          Stop recording and show where the session was saved
-  record replay <file> Show commands from a recorded session file
+  record list          List all recorded sessions
+  record replay <name> [--run|--step]
+                      Show/replay commands from a recorded session
+  record delete <name> Delete a recorded session
+  record clear         Delete all recorded sessions
+  record rename <old> <new>
+                      Rename a recorded session
 
 Snapshot Commands:
   snapshot <name>      Create a snapshot of the current directory
@@ -209,6 +216,22 @@ Snapshot Commands:
                       Restore a snapshot to the current directory
   restore <name> --dry-run
                       List snapshot contents without extracting
+
+Share Commands:
+  share <workflow>     Generate markdown documentation for a recorded workflow
+  share --session      Generate documentation from recent buildme session
+  share --history [N]  Generate documentation from last N terminal commands (default: 10)
+  share list           List all generated workflow files
+  share delete <name>  Delete a specific workflow file
+  share clean          Delete all workflow files
+  
+  Share Options:
+    --convert <os>     Convert commands for target OS (macos|linux|windows|ubuntu|centos)
+    --no-ai-summary    Skip AI-generated summary
+    --include-env      Include environment information (default: true)
+    --dry-run          Preview what would be shared without saving
+    --filter-meaningful Filter out basic commands like ls, cd, pwd (default: true)
+    --no-filter        Include all commands without filtering
 
 Examples:
   buildme "create and activate a python virtualenv"
@@ -231,11 +254,11 @@ Examples:
   buildme clean-history
   
   # Record examples
-  buildme record start <name>
+  buildme record start my-workflow
   buildme record stop
   buildme record list
-  buildme record replay <name>
-  buildme record rename <old> <new>
+  buildme record replay my-workflow --run
+  buildme record rename old-name new-name
   
   # Snapshot examples
   buildme snapshot before-changes
@@ -244,6 +267,16 @@ Examples:
   buildme restore before-changes --to ~/backup/
   buildme restore before-changes --dry-run
   buildme snapshot delete old-snapshot
+  
+  # Share examples
+  buildme share my-workflow
+  buildme share --session
+  buildme share --history 15
+  buildme share --session --convert ubuntu
+  buildme share --history 10 --no-ai-summary --dry-run
+  buildme share list
+  buildme share delete my-workflow-2024-05-29
+  buildme share clean
 
 EOF
     return 0
