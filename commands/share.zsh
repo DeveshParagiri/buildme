@@ -1,7 +1,41 @@
 # --- share.zsh ---
+#
+# This script provides functions for generating and sharing workflow documentation
+# from various sources within the 'buildme' tool. It creates comprehensive markdown
+# documentation from recorded workflows, buildme sessions, or terminal command history,
+# with support for cross-platform command conversion and intelligent formatting.
+#
+# Features:
+# - Generate markdown documentation from recorded workflows, recent buildme sessions,
+#   or terminal command history with customizable filtering options.
+# - Cross-platform command conversion between macOS, Linux, Windows, Ubuntu, and CentOS
+#   using both AI-powered and rule-based translation methods.
+# - Automatic clipboard copying and local file storage for easy sharing across platforms.
+# - AI-powered workflow summaries and comprehensive environment information capture.
+# - Workflow file management with list, delete, and cleanup operations.
+# - Intelligent command filtering to focus on meaningful operations.
+# - Support for dry-run mode to preview generated documentation before saving.
+#
+# Usage:
+# - Use `buildme share <workflow>` to generate documentation from a recorded workflow.
+# - Use `buildme share --session` to document the most recent buildme session.
+# - Use `buildme share --history [N]` to document the last N terminal commands.
+# - Use `buildme share list` to view all generated workflow files.
+# - Use `buildme share delete <name>` to remove specific workflow documentation.
+# - Use `buildme share clean` to remove all generated workflow files.
+# - Add `--convert <os>` to convert commands for different operating systems.
+# - Add `--dry-run` to preview documentation without saving or copying.
+# - Add `--no-ai-summary` to skip AI-generated workflow summaries.
+# - Add `--no-filter` to include all commands without meaningful filtering.
+#
+# Dependencies:
+# - Requires clipboard utilities: pbcopy (macOS), xclip/xsel (Linux), or clip.exe (Windows).
+# - Uses `curl` and `jq` for AI-powered features when API keys are available.
+# - Assumes access to `date`, `stat`, and standard Unix utilities for file operations.
+# - Relies on buildme's core generate functions for AI summaries and command conversion.
 
 buildme_share() {
-    # Handle subcommands first
+
     case "${1:-}" in
         "list")
             list_workflow_files

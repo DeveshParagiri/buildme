@@ -9,17 +9,36 @@ Undo commands. Scaffold projects. Record terminal workflows. All from your termi
 </p>
 
 ## ⚡️ Features
-
-- 🔁 `buildme undo` — Revert recent terminal or `buildme` commands
-- 🚀 `buildme starter` — Initialize projects from folders or GitHub repos
-- ✨ `buildme generate` — Natural-language shell command generation
-- 📼 `buildme record` — Record and replay your terminal workflows
-- 💾 `buildme snapshot/restore` — Save and restore directory states
-- 🧠 Smart model switching (`gpt-4o-mini`, DeepSeek, local models)
+- 🔁 buildme undo — Revert recent terminal or buildme commands
+- 🚀 buildme starter — Initialize projects from folders or GitHub repos
+- ✨ buildme generate — Natural-language shell command generation
+- 📼 buildme record — Record and replay your terminal workflows
+- 💾 buildme snapshot/restore — Save and restore directory states
+- 📤 buildme share — Convert terminal sessions into shareable markdown docs
+- 🧠 Smart model switching (gpt-4o-mini, DeepSeek, local models)
 - ✅ Built for speed, safety, and zero-bloat workflows
 
----
+## 🛠️ buildme vs. Popular AI CLI Tools
 
+| Feature                        | buildme | shell-gpt | GitHub Copilot CLI | aider | AI-Shell |
+|-------------------------------|:-------:|:---------:|:------------------:|:-----:|:--------:|
+| 🤖 Natural Language Commands   | ✅      | ✅        | ✅                 | ✅    | ✅       |
+| 🔁 AI-Powered Undo             | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 📼 Record Terminal Workflows   | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 🔄 Replay Recorded Sessions    | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 📤 Share as Markdown Docs      | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 🌍 OS Command Conversion       | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 🚀 Project Scaffolding         | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 💾 Directory Snapshots         | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| ⚡ Step-by-Step Execution      | ✅      | ✅        | ❌                 | ❌    | ❌       |
+| 📋 Auto Copy to Clipboard      | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 🔧 Code Editing / Diffing      | ❌      | ❌        | ✅                 | ✅    | ❌       |
+| 📚 Git Integration             | ❌      | ❌        | ✅                 | ✅    | ❌       |
+| 💬 Interactive Chat Mode       | ❌      | ✅        | ✅                 | ✅    | ✅       |
+| 🏢 Share Workflows with Teams  | ✅      | ❌        | ❌                 | ❌    | ❌       |
+| 🎯 Primary Use Case            | **Workflow Automation & Safety** | Command Gen | GitHub Copilot | Inline Code Editing | Terminal Chat |
+
+---
 ## 🔧 Installation
 
 ```bash
@@ -128,6 +147,44 @@ buildme restore pre-refactor --overwrite
 buildme restore pre-refactor --dry-run
 ```
 
+### 📤 Share Workflows
+
+Convert any session, record, or history into a Markdown doc:
+
+```bash
+# Share a recorded terminal session
+buildme share my-workflow
+```
+
+```bash
+# Share the last buildme session
+buildme share --session
+```
+
+```bash
+# Share recent commands from terminal history
+buildme share --history 15
+```
+
+Optional flags:
+
+```bash
+--convert macos         # Convert commands for macOS, Linux, etc.
+--include-env           # Include OS, shell, and version details
+--no-ai-summary         # Skip the AI-generated summary
+
+--dry-run               # Preview without saving
+--filter-meaningful     # Filter out commands like `ls`, `cd`, `pwd`
+--no-filter             # Include all commands (no filtering)
+```
+
+Manage shared files:
+```bash
+buildme share list
+buildme share delete my-workflow-2025-05-29
+buildme share clean
+```
+
 ### 🧠 AI Model Management
 
 ```bash
@@ -180,7 +237,6 @@ lib/                       # Helpers and utilities
 
 ## 🔮 Coming Soon
 
-- 📤 buildme share — Export and share setup steps with your team
 - 🧠 buildme explain — Understand any terminal command or file
 
 ## 🤝 Contributing
@@ -198,3 +254,8 @@ Dev Paragiri
 [Website](https://deveshparagiri.com) • [Twitter/X](https://x.com/deveshparagiri)
 
 ⚡ If you use buildme, tweet me your workflows — I love seeing what devs are cooking.
+
+
+
+
+
