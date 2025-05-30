@@ -182,7 +182,6 @@ lib/                       # Helpers and utilities
 
 - 📤 buildme share — Export and share setup steps with your team
 - 🧠 buildme explain — Understand any terminal command or file
-- 🌐 Bash + Fish shell support
 
 ## 🤝 Contributing
 

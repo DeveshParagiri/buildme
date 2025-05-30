@@ -1,9 +1,31 @@
 #!/usr/bin/env bash
 
-# Global variables - define snapshot directory path
+# --- snapshots.zsh ---
+#
+# This script provides functions for creating, listing, deleting, and restoring
+# snapshots of the current directory. Snapshots are stored as compressed tar
+# archives, allowing users to capture and restore the state of a project at
+# specific points in time.
+#
+# Features:
+# - `buildme_snapshot_create`: Creates a snapshot of the current directory.
+# - `buildme_snapshot_list`: Lists all available snapshots.
+# - `buildme_snapshot_delete`: Deletes a specified snapshot.
+# - `buildme_snapshot_restore`: Restores a snapshot to a specified directory.
+# - Supports platform detection for timestamp formatting.
+#
+# Usage:
+# - Use `buildme snapshot <name>` to create a snapshot.
+# - Use `buildme snapshot list` to view available snapshots.
+# - Use `buildme snapshot delete <name>` to remove a snapshot.
+# - Use `buildme restore <name|path> [--to <path>] [--overwrite] [--dry-run]` to restore a snapshot.
+#
+# Dependencies:
+# - Requires `tar` for creating and extracting archives.
+# - Assumes a writable home directory for storing snapshots.
+
 SNAPSHOT_DIR="$HOME/.buildme_snapshots"
 
-# Detect platform for cross-platform compatibility
 detect_platform() {
     case "$(uname -s)" in
         Darwin*) echo "macos" ;;
@@ -13,7 +35,6 @@ detect_platform() {
     esac
 }
 
-# Cross-platform date formatting
 format_timestamp() {
     local timestamp="$1"
     local platform=$(detect_platform)
@@ -35,14 +56,11 @@ format_timestamp() {
     fi
 }
 
-# Cross-platform tar command
 create_tar_archive() {
     local filepath="$1"
     local platform=$(detect_platform)
     
-    # Try GNU tar syntax first (Linux/Windows), then BSD tar syntax (macOS)
     if tar --version 2>/dev/null | grep -q "GNU tar"; then
-        # GNU tar (Linux/Windows WSL)
         tar -czf "$filepath" \
             --exclude='.git' \
             --exclude='node_modules' \
@@ -54,7 +72,6 @@ create_tar_archive() {
             --exclude='.buildme_snapshots' \
             . 2>/dev/null
     else
-        # BSD tar (macOS) or fallback
         tar -czf "$filepath" \
             --exclude '.git' \
             --exclude 'node_modules' \
@@ -68,7 +85,6 @@ create_tar_archive() {
     fi
 }
 
-# Ensure snapshot directory exists
 buildme_ensure_snapshot_dir() {
     local snapshot_dir="${SNAPSHOT_DIR:-$HOME/.buildme_snapshots}"
     if [[ ! -d "$snapshot_dir" ]]; then
@@ -79,29 +95,23 @@ buildme_ensure_snapshot_dir() {
     fi
 }
 
-# Get timestamp for filename
 buildme_get_timestamp() {
     date +"%Y%m%d_%H%M%S"
 }
 
-# Find snapshot file by name or path
 buildme_find_snapshot() {
     local name_or_path="$1"
     local snapshot_dir="${SNAPSHOT_DIR:-$HOME/.buildme_snapshots}"
     
-    # If it's a full path ending in .tar.gz, use it directly
     if [[ "$name_or_path" == *.tar.gz ]]; then
         echo "$name_or_path"
         return 0
     fi
     
-    # Otherwise, look in snapshot directory
     buildme_ensure_snapshot_dir
     
-    # Use reliable globbing with directory change
     local matches=()
-    
-    # Change to snapshot directory and use glob
+
     if cd "$snapshot_dir" 2>/dev/null; then
         for file in .buildme_snapshot_${name_or_path}_*.tar.gz; do
             if [[ -f "$file" ]]; then
@@ -111,9 +121,7 @@ buildme_find_snapshot() {
         cd - >/dev/null
     fi
     
-    # Check if any matches exist
     if [[ ${#matches[@]} -gt 0 ]]; then
-        # Return the most recent match (they sort chronologically)
         printf '%s\n' "${matches[@]}" | sort -r | head -n1
         return 0
     fi
@@ -121,14 +129,12 @@ buildme_find_snapshot() {
     return 1
 }
 
-# Create a snapshot
 buildme_snapshot_create() {
     local name="$1"
     [[ -z "$name" ]] && echo "❌ Snapshot name required" && return 1
     
     buildme_ensure_snapshot_dir || return 1
     
-    # Check if current directory has any files to snapshot
     echo "📁 Current directory: $(pwd)"
     local file_count
     file_count=$(find . -type f ! -path './.git/*' ! -path './node_modules/*' ! -path './__pycache__/*' ! -name '*.pyc' ! -name '.DS_Store' ! -path './build/*' ! -path './dist/*' ! -path './.buildme_snapshots/*' | wc -l | tr -d ' ')
@@ -147,7 +153,6 @@ buildme_snapshot_create() {
     local filename=".buildme_snapshot_${name}_${timestamp}.tar.gz"
     local filepath="$snapshot_dir/$filename"
     
-    # Check if snapshot with same name already exists
     if buildme_find_snapshot "$name" >/dev/null 2>&1; then
         echo "⚠️  Snapshot with name '$name' already exists."
         read -r "?Continue anyway? [y/N]: " confirm
@@ -160,17 +165,14 @@ buildme_snapshot_create() {
     echo "📦 Creating snapshot '$name'..."
     echo "📁 Target: $filepath"
     
-    # Create the snapshot using cross-platform tar function
     if create_tar_archive "$filepath"; then
         
-        # Check if the archive actually has content
         if [[ ! -s "$filepath" ]]; then
             echo "❌ Snapshot file is empty. Check that your directory has files and isn't all excluded."
             rm -f "$filepath"
             return 1
         fi
         
-        # Get the size of the created archive
         local archive_size
         archive_size=$(ls -lh "$filepath" | awk '{print $5}')
         local archive_files
@@ -182,24 +184,19 @@ buildme_snapshot_create() {
         
     else
         echo "❌ Failed to create snapshot"
-        # Clean up failed snapshot
         [[ -f "$filepath" ]] && rm -f "$filepath"
         return 1
     fi
 }
 
-# List all snapshots
 buildme_snapshot_list() {
     buildme_ensure_snapshot_dir || return 1
     
     local snapshot_dir="${SNAPSHOT_DIR:-$HOME/.buildme_snapshots}"
     
-    # Use cross-platform globbing
     local snapshots=()
     
-    # Change to snapshot directory and use glob
     if cd "$snapshot_dir" 2>/dev/null; then
-        # Handle globbing more portably
         shopt -s nullglob 2>/dev/null || setopt nullglob 2>/dev/null || true
         for file in .buildme_snapshot_*.tar.gz; do
             [[ -f "$file" ]] && snapshots+=("$snapshot_dir/$file")
@@ -222,17 +219,13 @@ buildme_snapshot_list() {
     
     for snapshot in "${snapshots[@]}"; do
         if [[ -f "$snapshot" ]]; then
-            local basename=$(basename "$snapshot")
-            # Extract name and timestamp from filename
-            # Format: .buildme_snapshot_<name>_<timestamp>.tar.gz
+            local basename=$(basename "$snapshot")      
             local name_and_timestamp=${basename#.buildme_snapshot_}
             local name_and_timestamp=${name_and_timestamp%.tar.gz}
             
-            # Split on last underscore to separate name from timestamp
             local name=${name_and_timestamp%_*}
             local timestamp=${name_and_timestamp##*_}
             
-            # Format timestamp for display using cross-platform function
             local formatted_date=$(format_timestamp "$timestamp")
             
             local size=$(ls -lh "$snapshot" | awk '{print $5}')
@@ -250,7 +243,6 @@ buildme_snapshot_list() {
     echo ""
 }
 
-# Delete a snapshot
 buildme_snapshot_delete() {
     local name="$1"
     [[ -z "$name" ]] && echo "❌ Snapshot name required" && return 1
@@ -277,7 +269,6 @@ buildme_snapshot_delete() {
     fi
 }
 
-# Restore a snapshot
 buildme_snapshot_restore() {
     local name_or_path="$1"
     local target_dir=""
@@ -286,7 +277,6 @@ buildme_snapshot_restore() {
     
     [[ -z "$name_or_path" ]] && echo "❌ Snapshot name or path required" && return 1
     
-    # Parse additional arguments
     shift
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -310,20 +300,17 @@ buildme_snapshot_restore() {
         esac
     done
     
-    # Find the snapshot file
     local snapshot_file
     if ! snapshot_file=$(buildme_find_snapshot "$name_or_path"); then
         echo "❌ Snapshot '$name_or_path' not found"
         return 1
     fi
     
-    # Verify file exists and is readable
     if [[ ! -f "$snapshot_file" || ! -r "$snapshot_file" ]]; then
         echo "❌ Snapshot file is not readable: $snapshot_file"
         return 1
     fi
     
-    # Extract snapshot name for display
     local basename=$(basename "$snapshot_file")
     local snapshot_name=${basename#.buildme_snapshot_}
     snapshot_name=${snapshot_name%_*.tar.gz}
@@ -331,7 +318,6 @@ buildme_snapshot_restore() {
     echo "📦 Restoring snapshot '$snapshot_name'"
     echo "📁 Source: $snapshot_file"
     
-    # Handle dry-run mode
     if [[ "$dry_run" -eq 1 ]]; then
         echo "🧪 Dry run (listing contents):"
         echo "──────────────────────────────"
@@ -347,7 +333,6 @@ buildme_snapshot_restore() {
         return 0
     fi
     
-    # Determine target directory
     if [[ "$overwrite" -eq 1 ]]; then
         target_dir="."
         echo "⚠️  WARNING: This will extract into the current directory!"
@@ -358,15 +343,13 @@ buildme_snapshot_restore() {
             return 1
         fi
     elif [[ -n "$target_dir" ]]; then
-        echo "📁 Target: $target_dir"
-        # Create target directory if it doesn't exist
+        echo "📁 Target: $target_dir"   
         if [[ ! -d "$target_dir" ]]; then
             mkdir -p "$target_dir"
         fi
     else
         target_dir="./restored_$snapshot_name"
         echo "📁 Target: $target_dir"
-        # Check if target directory already exists
         if [[ -d "$target_dir" ]]; then
             echo "⚠️  Directory '$target_dir' already exists."
             read -r "?Overwrite? [y/N]: " confirm
@@ -378,7 +361,6 @@ buildme_snapshot_restore() {
         mkdir -p "$target_dir"
     fi
     
-    # Extract the snapshot
     echo "📦 Extracting..."
     if tar -xzf "$snapshot_file" -C "$target_dir" 2>/dev/null; then
         if [[ "$overwrite" -eq 1 ]]; then
@@ -392,7 +374,6 @@ buildme_snapshot_restore() {
     fi
 }
 
-# Main snapshot command dispatcher
 buildme_snapshot() {
     case "${1:-}" in
         "")

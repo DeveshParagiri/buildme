@@ -1,38 +1,53 @@
-# buildme_history.zsh
+# --- history.zsh ---
 
-# Initialize history file
+# This script provides functions for managing and interacting with the command
+# history of the 'buildme' tool. It allows users to track, deduplicate, and
+# clean their command history, as well as undo recent commands.
+#
+# Features:
+# - `buildme_track_command`: Tracks and logs executed commands.
+# - `buildme_dedupe_history`: Removes duplicate entries from the history.
+# - `buildme_history`: Displays the most recent commands from history.
+# - `buildme_clear_history`: Clears the entire command history.
+# - `buildme_clean_history`: Cleans the history by removing duplicates.
+# - `buildme_undo_from_history`: Suggests undo commands for recent history.
+#
+# Usage:
+# - Use `buildme history` to view recent command history.
+# - Use `buildme clear_history` to clear all command history.
+# - Use `buildme clean_history` to remove duplicate entries.
+# - Use `buildme undo_from_history` to undo recent commands.
+#
+# Dependencies:
+# - Assumes a writable home directory for storing command history.
+
+
 BUILDME_HISTORY_FILE="$HOME/.buildme_history"
 touch "$BUILDME_HISTORY_FILE"
-
-# Function to deduplicate history
 buildme_dedupe_history() {
     if [[ -f "$BUILDME_HISTORY_FILE" ]]; then
-        # Create a temporary file with unique commands (keeping the latest timestamp for each)
         awk -F'|' '!seen[$2]++ {latest[$2] = $0} seen[$2] == 1 {delete latest[$2]; latest[$2] = $0} END {for (cmd in latest) print latest[cmd]}' "$BUILDME_HISTORY_FILE" | sort -t'|' -k1 > "${BUILDME_HISTORY_FILE}.tmp"
         mv "${BUILDME_HISTORY_FILE}.tmp" "$BUILDME_HISTORY_FILE"
     fi
 }
 
-# Function to track commands
+
 buildme_track_command() {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local command="$1"
     
-    # Skip if the exact same command was run in the last 5 seconds
     if [[ -f "$BUILDME_HISTORY_FILE" ]]; then
         local last_entry=$(tail -n 1 "$BUILDME_HISTORY_FILE")
         if [[ "$last_entry" == *"|$command" ]]; then
-            return 0  # Skip duplicate
+            return 0
         fi
     fi
     
     echo "$timestamp|$command" >> "$BUILDME_HISTORY_FILE"
     
-    # Occasionally clean up duplicates and limit size
     if (( RANDOM % 20 == 0 )); then
         buildme_dedupe_history
         
-        # Keep only last 500 commands after deduplication
         if [[ $(wc -l < "$BUILDME_HISTORY_FILE") -gt 500 ]]; then
             tail -n 500 "$BUILDME_HISTORY_FILE" > "${BUILDME_HISTORY_FILE}.tmp"
             mv "${BUILDME_HISTORY_FILE}.tmp" "$BUILDME_HISTORY_FILE"
@@ -40,27 +55,22 @@ buildme_track_command() {
     fi
 }
 
-# The precmd hook function
 buildme_precmd() {
     if [[ -n "$BUILDME_HISTORY_FILE" ]]; then
         local last_cmd=$(fc -ln -1)
-        # Only track if it's not a buildme command and not a space-prefixed command
         [[ "$last_cmd" != buildme* && "$last_cmd" != " "* ]] && buildme_track_command "$last_cmd"
     fi
 }
 
-# Register the precmd hook
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd buildme_precmd
 
-# History management functions
 buildme_history() {
     if [[ ! -f "$BUILDME_HISTORY_FILE" ]]; then
         echo "⚠️  No command history found."
         return 1
     fi
     
-    # Show last N commands (default 10)
     local n=${1:-10}
     tail -n "$n" "$BUILDME_HISTORY_FILE"
 }
@@ -73,7 +83,6 @@ buildme_clear_history() {
     fi
 }
 
-# New function to clean history without clearing it completely
 buildme_clean_history() {
     if [[ ! -f "$BUILDME_HISTORY_FILE" ]]; then
         echo "⚠️  No command history found."
@@ -89,14 +98,11 @@ buildme_clean_history() {
     echo "📊 Removed $removed duplicate entries ($original_count → $new_count commands)"
 }
 
-# New function for undo from history
 buildme_undo_from_history() {
     if [[ ! -f "$BUILDME_HISTORY_FILE" ]]; then
         echo "⚠️  No command history found."
         return 1
     fi
-
-    # Get the last N commands from history (default 10)
     local n=10
     if [[ "$1" =~ ^[0-9]+$ ]]; then
         n="$1"

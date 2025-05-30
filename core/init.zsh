@@ -1,3 +1,25 @@
+# --- init.zsh ---
+#
+# This script defines the `buildme_init` function, which facilitates the setup
+# of API keys for different providers, specifically OpenAI and DeepSeek. It
+# provides an interactive interface for users to input and securely store their
+# API keys.
+#
+# Features:
+# - Interactive menu for selecting the provider(s) to set up.
+# - Options to store the OpenAI API key in the macOS Keychain, a plaintext file,
+#   or to export it manually.
+# - Stores the DeepSeek API key in a secure plaintext file.
+# - Provides feedback on the success of the storage operation.
+#
+# Usage:
+# - Invoke `buildme_init` to start the setup process.
+# - Follow the prompts to enter and store your API keys securely.
+#
+# Dependencies:
+# - Requires macOS for Keychain storage option.
+# - Assumes access to the `security` command for Keychain operations.
+
 buildme_init() {
   echo "🧠 Which provider do you want to set up?"
   echo "1) OpenAI only"
