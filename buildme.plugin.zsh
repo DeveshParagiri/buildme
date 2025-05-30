@@ -168,24 +168,21 @@ Options:
   history [n]          Show last n commands (default: 10)
   clear-history        Clear command history
   clean-history        Remove duplicate commands from history
-  model list           Show all available models and their status
-  record {start|stop|replay <file>}
-                      Manage terminal command recording
-  snapshot {<name>|list|delete <name>}
-                      Manage directory snapshots
-  restore <name|path> [--to <path>] [--overwrite] [--dry-run]
-                      Restore a directory snapshot
-  share <source>       Generate and share workflow documentation
+  model <cmd>          Show all available models and their status
+  record <cmd>         Manage terminal command recording
+  snapshot <cmd>       Manage directory snapshots
+  restore <name|path>  Restore a directory snapshot
+  share <cmd>          Generate and share workflow documentation
   --help               Show this help message
 
 Starter Commands:
   starter list         List all available starters (built-in and custom)
   starter new <name> <target> [--var=value]
-                      Create new project from a starter template
+                       Create new project from a starter template
   starter init <name> <source> [--instructions="..."]
-                      Create a starter from GitHub repo or local directory
+                       Create a starter from GitHub repo or local directory
   starter delete <name>
-                      Delete a starter template
+                       Delete a starter template
 
 Model Commands:
   model [status]       Show current model configuration and API key status
@@ -198,24 +195,24 @@ Record Commands:
   record stop          Stop recording and show where the session was saved
   record list          List all recorded sessions
   record replay <name> [--run|--step]
-                      Show/replay commands from a recorded session
+                       Show/replay commands from a recorded session
   record delete <name> Delete a recorded session
   record clear         Delete all recorded sessions
   record rename <old> <new>
-                      Rename a recorded session
+                       Rename a recorded session
 
 Snapshot Commands:
   snapshot <name>      Create a snapshot of the current directory
   snapshot list        List all available snapshots
   snapshot delete <name>
-                      Delete a snapshot by name
+                       Delete a snapshot by name
   restore <name|path>  Restore a snapshot to ./restored_<name>/
   restore <name> --to <path>
-                      Restore a snapshot to a specific directory
+                       Restore a snapshot to a specific directory
   restore <name> --overwrite
-                      Restore a snapshot to the current directory
+                       Restore a snapshot to the current directory
   restore <name> --dry-run
-                      List snapshot contents without extracting
+                       List snapshot contents without extracting
 
 Share Commands:
   share <workflow>     Generate markdown documentation for a recorded workflow
