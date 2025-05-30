@@ -1,15 +1,35 @@
 #!/usr/bin/env zsh
-# buildme_record.zsh - Simple terminal command recording
+# --- record.zsh ---
+#
+# This script provides functions for recording, listing, replaying, and managing
+# terminal command sessions. It allows users to capture their command history
+# for later review or execution.
+#
+# Features:
+# - `buildme_record_start`: Starts recording terminal commands to a file.
+# - `buildme_record_stop`: Stops the current recording session.
+# - `buildme_record_list`: Lists all available recordings.
+# - `buildme_record_replay`: Replays commands from a specified recording.
+# - `buildme_record_delete`: Deletes a specified recording.
+# - `buildme_record_clear`: Deletes all recordings.
+# - `buildme_record_rename`: Renames a specified recording.
+#
+# Usage:
+# - Use `buildme record start [name]` to begin recording.
+# - Use `buildme record stop` to end the recording session.
+# - Use `buildme record list` to view available recordings.
+# - Use `buildme record replay [--run|--step] <name>` to replay a recording.
+# - Use `buildme record delete <name_or_file>` to remove a recording.
+#
+# Dependencies:
+# - Assumes a writable home directory for storing recordings.
 
-# Define the hook function outside to avoid redefinition
 buildme_record_hook() {
-  # Skip recording buildme record commands to avoid recursion
   [[ "$1" =~ ^buildme[[:space:]]+record ]] && return
   echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$BUILDME_RECORD_FILE"
 }
 
 buildme_record_start() {
-  # Check if already recording
   if [[ -n "$BUILDME_RECORD_FILE" ]]; then
     echo "⚠️  Already recording to: $BUILDME_RECORD_FILE"
     return 1
@@ -20,9 +40,7 @@ buildme_record_start() {
   
   echo "🎥 Recording started. All terminal commands will be logged."
   
-  # Create filename with optional name
   if [[ -n "$session_name" ]]; then
-    # Sanitize the session name (remove spaces, special chars)
     session_name=$(echo "$session_name" | sed 's/[^a-zA-Z0-9_-]/_/g')
     export BUILDME_RECORD_FILE="$HOME/.buildme_record_${session_name}_${timestamp}.sh"
     echo "📝 Session name: $session_name"
@@ -32,7 +50,6 @@ buildme_record_start() {
   
   echo "📁 File: $BUILDME_RECORD_FILE"
   
-  # Add to zsh's preexec_functions array if not already there
   if [[ -z "${preexec_functions[(r)buildme_record_hook]}" ]]; then
     preexec_functions+=(buildme_record_hook)
   fi
@@ -44,7 +61,6 @@ buildme_record_stop() {
     return 1
   fi
   
-  # Remove our hook
   preexec_functions=(${preexec_functions[@]:#buildme_record_hook})
   
   echo "⏹️ Recording stopped. Saved to: $BUILDME_RECORD_FILE"
@@ -56,7 +72,6 @@ buildme_record_list() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
   local found=0
-  # Use nullglob to prevent error when no matches
   setopt local_options nullglob
   
   for file in "$HOME"/.buildme_record_*.sh; do
@@ -65,12 +80,10 @@ buildme_record_list() {
       local basename=$(basename "$file")
       local name_part=""
       
-      # Extract name from filename
       if [[ "$basename" =~ ^\.buildme_record_(.+)_[0-9]+\.sh$ ]]; then
         name_part="${match[1]}"
         echo "📝 $name_part"
       else
-        # For files without names, show timestamp
         if [[ "$basename" =~ ^\.buildme_record_([0-9]+)\.sh$ ]]; then
           local timestamp="${match[1]}"
           local date_str=$(date -r "$timestamp" "+%Y-%m-%d %H:%M" 2>/dev/null || echo "unknown")
@@ -93,7 +106,6 @@ buildme_record_replay() {
   local run_mode=false
   local step_mode=false
   
-  # Parse arguments
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --run) run_mode=true; shift ;;
@@ -110,7 +122,6 @@ buildme_record_replay() {
   
   local file=""
   
-  # Check if it's a full file path
   if [[ -f "$input" ]]; then
     file="$input"
   else
@@ -138,22 +149,17 @@ buildme_record_replay() {
     fi
   fi
   
-  # Extract commands
   local commands=()
   while IFS= read -r line; do
-    # Skip empty lines and comments
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
     
-    # Extract command part (after timestamp)
     if [[ "$line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]+[0-9]{2}:[0-9]{2}:[0-9]{2}[[:space:]]+(.*) ]]; then
       local cmd="${match[1]}"
       
-      # Skip empty or malformed commands
       if [[ -z "$cmd" || "$cmd" =~ ^[[:space:]]*$ ]]; then
         continue
       fi
       
-      # Skip partial commands (lines that start with spaces, dashes, or braces)
       if [[ "$cmd" =~ ^[[:space:]]*[-{}] ]] || [[ "$cmd" =~ ^[[:space:]]*[\"\'\\] ]]; then
         continue
       fi
@@ -165,9 +171,8 @@ buildme_record_replay() {
   if [[ ${#commands[@]} -eq 0 ]]; then
     echo "❌ No commands found in recording"
     return 1
-  fi
+  fi  
   
-  # Show preview
   echo "🔁 Commands from $(basename "$file"):"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   for cmd in "${commands[@]}"; do
@@ -175,9 +180,7 @@ buildme_record_replay() {
   done
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
-  # Handle execution
   if [[ "$run_mode" == true ]]; then
-    # Run mode: execute all with single confirmation
     echo ""
     echo "❓ Execute all ${#commands[@]} commands? [y/N]"
     read -r confirm
@@ -185,10 +188,10 @@ buildme_record_replay() {
       for cmd in "${commands[@]}"; do
         echo "🚀 $cmd"
         if eval "$cmd"; then
-          echo ""  # Add space before success
+          echo ""
           echo "✅ Success"
         else
-          echo ""  # Add space before failure
+          echo ""
           echo "❌ Command failed: $cmd"
         fi
       done
@@ -197,7 +200,6 @@ buildme_record_replay() {
       echo "🚫 Execution cancelled"
     fi
   else
-    # Default/step mode: step-by-step with confirmation
     echo ""
     local run_all=0
     
@@ -258,11 +260,9 @@ buildme_record_delete() {
   
   local file=""
   
-  # Check if it's a full file path
   if [[ -f "$input" ]]; then
     file="$input"
   else
-    # Try to find by name
     local found_files=()
     for f in "$HOME"/.buildme_record_*"$input"*_*.sh; do
       if [[ -f "$f" ]]; then
@@ -286,7 +286,6 @@ buildme_record_delete() {
     fi
   fi
   
-  # Confirm deletion
   echo "❓ Delete recording: $(basename "$file")? [y/N]"
   read -r confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
@@ -329,7 +328,6 @@ buildme_record_rename() {
     return 1
   fi
   
-  # Find the file
   local file=""
   local found_files=()
   for f in "$HOME"/.buildme_record_*"$input"*_*.sh; do
@@ -348,11 +346,10 @@ buildme_record_rename() {
     file="${found_files[1]}"
   fi
   
-  # Extract timestamp from old filename
   local basename=$(basename "$file")
   if [[ "$basename" =~ ^\.buildme_record_(.+)_([0-9]+)\.sh$ ]]; then
     local timestamp="${match[2]}"
-    new_name=$(echo "$new_name" | sed 's/[^a-zA-Z0-9_-]/_/g')  # sanitize
+    new_name=$(echo "$new_name" | sed 's/[^a-zA-Z0-9_-]/_/g')
     local new_file="$HOME/.buildme_record_${new_name}_${timestamp}.sh"
     
     mv "$file" "$new_file"

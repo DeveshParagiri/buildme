@@ -1,3 +1,30 @@
+# --- models.zsh ---
+#
+# This script provides functions for managing API keys and model configurations
+# for the 'buildme' tool. It supports OpenAI and DeepSeek API keys, as well as
+# local model configurations.
+#
+# Features:
+# - Retrieve and manage OpenAI and DeepSeek API keys from environment variables,
+#   macOS Keychain, or configuration files.
+# - List available models and indicate their configuration status.
+# - Set and get the default model for the 'buildme' tool.
+# - Clear all stored API keys and reset configurations.
+# - Check the status of local model servers.
+#
+# Usage:
+# - Use `get_api_key` to retrieve API keys for a specified provider.
+# - Use `buildme_model_list` to list all available models.
+# - Use `set_default_model` to set the default model.
+# - Use `show_model_status` to display the current model configuration.
+# - Use `clear_all_keys` to remove all stored API keys and reset configurations.
+#
+# Dependencies:
+# - Requires macOS for Keychain operations.
+# - Assumes access to `security` command for Keychain operations.
+# - Uses `curl` for checking local server status.
+# - Uses `jq` for parsing JSON responses from local servers.
+
 get_openai_key() {
   if [[ -n "$OPENAI_API_KEY" ]]; then
     echo "$OPENAI_API_KEY"
@@ -33,10 +60,8 @@ buildme_model_list() {
   echo "🤖 Available Models:"
   echo "══════════════════════════════════════════════════════════════"
   
-  # Get the actual default model
   local default_model=$(get_default_model)
   
-  # Check OpenAI models
   local openai_key=$(get_openai_key 2>/dev/null)
   if [[ -n "$openai_key" ]]; then
     echo "✅ OpenAI Models (configured):"
@@ -55,7 +80,6 @@ buildme_model_list() {
   
   echo ""
   
-  # Check DeepSeek model
   local deepseek_key=$(get_deepseek_key 2>/dev/null)
   if [[ -n "$deepseek_key" ]]; then
     echo "✅ DeepSeek Model (configured):"
@@ -72,7 +96,6 @@ buildme_model_list() {
   
   echo ""
   
-  # Check Local model
   if curl -s --connect-timeout 2 http://localhost:1234/v1/models >/dev/null 2>&1; then
     echo "✅ Local Model (available):"
     if [[ "$default_model" == "local" ]]; then
@@ -81,7 +104,6 @@ buildme_model_list() {
       echo "   • local (running on localhost:1234)"
     fi
     
-    # Try to get the actual model name
     local model_info
     model_info=$(curl -s --connect-timeout 2 http://localhost:1234/v1/models 2>/dev/null | jq -r '.data[0].id // empty' 2>/dev/null)
     if [[ -n "$model_info" && "$model_info" != "null" ]]; then
@@ -98,7 +120,6 @@ buildme_model_list() {
   echo "Example: buildme --model deepseek \"create a python file\""
 }
 
-# Get default model from config or fallback
 get_default_model() {
   if [[ -f "$HOME/.buildme_config" ]]; then
     grep -E "^DEFAULT_MODEL=" "$HOME/.buildme_config" | cut -d= -f2-
@@ -107,12 +128,10 @@ get_default_model() {
   fi
 }
 
-# Set default model
 set_default_model() {
   local model="$1"
   [[ -z "$model" ]] && echo "❌ Model name required" && return 1
   
-  # Validate model name
   case "$model" in
     gpt-4o-mini|gpt-4o|gpt-3.5-turbo|gpt-4-turbo|deepseek|local)
       ;;
@@ -123,9 +142,7 @@ set_default_model() {
       ;;
   esac
   
-  # Update or create config file
   if [[ -f "$HOME/.buildme_config" ]]; then
-    # Update existing config
     if grep -q "^DEFAULT_MODEL=" "$HOME/.buildme_config"; then
       sed -i.bak "s/^DEFAULT_MODEL=.*/DEFAULT_MODEL=$model/" "$HOME/.buildme_config"
       rm "$HOME/.buildme_config.bak" 2>/dev/null
@@ -133,14 +150,12 @@ set_default_model() {
       echo "DEFAULT_MODEL=$model" >> "$HOME/.buildme_config"
     fi
   else
-    # Create new config
     echo "DEFAULT_MODEL=$model" > "$HOME/.buildme_config"
   fi
   
   echo "✅ Default model set to: $model"
 }
 
-# Show current model status
 show_model_status() {
   local default_model=$(get_default_model)
   echo "🤖 Current Model Configuration:"
@@ -148,25 +163,21 @@ show_model_status() {
   echo "📌 Default model: $default_model"
   echo ""
   
-  # Show OpenAI status
   if get_openai_key >/dev/null 2>&1; then
     echo "🔑 OpenAI API: ✅ Configured"
   else
     echo "🔑 OpenAI API: ❌ Not configured"
   fi
   
-  # Show DeepSeek status  
   if get_deepseek_key >/dev/null 2>&1; then
     echo "🔑 DeepSeek API: ✅ Configured"
   else
     echo "🔑 DeepSeek API: ❌ Not configured"
   fi
   
-  # Show Local server status
   if curl -s --connect-timeout 2 http://localhost:1234/v1/models >/dev/null 2>&1; then
     echo "🔑 Local Server: ✅ Running on localhost:1234"
     
-    # Try to get the actual model name
     local model_info
     model_info=$(curl -s --connect-timeout 2 http://localhost:1234/v1/models 2>/dev/null | jq -r '.data[0].id // empty' 2>/dev/null)
     if [[ -n "$model_info" && "$model_info" != "null" ]]; then
@@ -184,13 +195,11 @@ show_model_status() {
   echo "  buildme --model <name> ...   Use specific model for one command"
 }
 
-# Clear all API keys and reset configuration
 clear_all_keys() {
   echo "🧹 Clearing all API keys and configuration..."
   
   local cleared_count=0
   
-  # Remove from macOS Keychain (OpenAI)
   if command -v security &>/dev/null; then
     if security find-generic-password -a "$USER" -s "openai_api_key" &>/dev/null; then
       security delete-generic-password -a "$USER" -s "openai_api_key" 2>/dev/null
@@ -199,21 +208,18 @@ clear_all_keys() {
     fi
   fi
   
-  # Remove ~/.openai file
   if [[ -f "$HOME/.openai" ]]; then
     rm "$HOME/.openai"
     echo "✅ Removed ~/.openai file"
     ((cleared_count++))
   fi
   
-  # Remove ~/.deepseek file
   if [[ -f "$HOME/.deepseek" ]]; then
     rm "$HOME/.deepseek"
     echo "✅ Removed ~/.deepseek file"
     ((cleared_count++))
   fi
   
-  # Remove ~/.buildme_config file (resets default model)
   if [[ -f "$HOME/.buildme_config" ]]; then
     rm "$HOME/.buildme_config"
     echo "✅ Removed ~/.buildme_config file (reset to gpt-4o-mini default)"

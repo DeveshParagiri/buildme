@@ -1,20 +1,39 @@
+# --- undo.zsh ---
+# 
+# This script defines the `buildme_undo` function, which provides a mechanism
+# to undo the most recent meaningful operation performed by the user. It
+# intelligently determines whether to undo a recent 'buildme' session or a
+# terminal command based on available history.
+#
+# Features:
+# - Retrieves recent 'buildme' session commands and terminal history.
+# - Uses an LLM to suggest precise undo commands for the most recent action.
+# - Provides a user prompt to confirm execution of the suggested undo commands.
+# - Handles file and directory removals, and package uninstalls.
+#
+# Usage:
+# - Invoke `buildme_undo` to attempt to undo the last significant action.
+# - The function will prompt for confirmation before executing any undo commands.
+#
+# Dependencies:
+# - Requires access to session and command history files.
+# - Utilizes an LLM API for generating undo suggestions.
+
+
 buildme_undo() {
     local user_instruction="$*"
     user_instruction="${user_instruction#undo}"
     
-    # Get both contexts with better parsing
     local buildme_cmds=""
     local history_cmds=""
     
     if [[ -f ~/.last_buildme_session.sh ]]; then
-        # Read the last 2-3 buildme sessions from the accumulated file
         local session_content=$(tail -n 20 ~/.last_buildme_session.sh | grep -E "(ORIGINAL_REQUEST|GENERATED_COMMANDS|TIMESTAMP)" | tail -n 9)
         if [[ -n "$session_content" ]]; then
             buildme_cmds="Recent buildme sessions:
 $session_content"
         fi
     elif [[ -f ~/.last_buildme_commands.sh ]]; then
-        # Fallback to old format
         local last_buildme=$(cat ~/.last_buildme_commands.sh | cut -d'|' -f2- 2>/dev/null | head -n 1)
         if [[ -n "$last_buildme" && "$last_buildme" != "head: |: No such file or directory" ]]; then
             buildme_cmds="Last buildme command:\n$last_buildme"
@@ -22,21 +41,18 @@ $session_content"
     fi
     
     if [[ -f "$BUILDME_HISTORY_FILE" ]]; then
-        # Get only the single most recent meaningful command
         local recent_cmd=$(tail -n 10 "$BUILDME_HISTORY_FILE" | cut -d'|' -f2- | grep -v "^buildme" | grep -v "source ~/.zshrc" | grep -v "cat ~/.last_buildme" | grep -v "rm ~/.last_buildme" | tail -n 1)
         if [[ -n "$recent_cmd" ]]; then
             history_cmds="Most recent command: $recent_cmd"
         fi
     fi
     
-    # If no useful history at all
     if [[ -z "$buildme_cmds" && -z "$history_cmds" ]]; then
         echo "⚠️  No useful command history found."
         echo "💡 Try running some commands first, then use undo"
         return 1
     fi
     
-    # Very focused prompt - only undo the single most recent thing
     local undo_prompt="You are a shell expert. Undo ONLY the most recent meaningful operation.
 
 RULES:
@@ -60,7 +76,6 @@ $history_cmds"
     local key=$(get_api_key "gpt")
     local undo_commands=$(buildme_generate "$undo_prompt" "$key" "gpt-4o-mini")
 
-    # Clean and validate the output - allow any reasonable shell commands
     undo_commands=$(echo "$undo_commands" | \
         sed -e 's/^```[a-zA-Z]*//g' \
             -e 's/^```//g' \
@@ -75,11 +90,9 @@ $history_cmds"
         grep -E '^[a-zA-Z_./]' | \
         head -n 1)
     
-    # Split && chains into separate commands for display and safety
     undo_commands=$(echo "$undo_commands" | sed 's/ && /\
 /g')
 
-    # Validate that we have reasonable commands
     if [[ -z "$undo_commands" ]] || [[ $(echo "$undo_commands" | wc -l | tr -d ' ') -eq 0 ]]; then
         echo "❌ Could not generate safe undo commands"
         echo "💡 Recent commands don't seem to need undoing, or try being more specific:"
@@ -95,7 +108,6 @@ $history_cmds"
     
     read -r "?Run these undo commands? [y/N] " confirm
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        # Execute commands one by one for safety
         echo "$undo_commands" | while IFS= read -r cmd; do
             [[ -z "$cmd" ]] && continue
             echo "🔄 Running: $cmd"

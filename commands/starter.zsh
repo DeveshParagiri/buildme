@@ -1,19 +1,39 @@
-# buildme_starter.zsh
+# --- starter.zsh ---
+#
+# This script provides functions for managing and creating project starters
+# within the 'buildme' tool. It allows users to list, create, initialize, and
+# delete project starters, facilitating the setup of new projects with predefined
+# templates.
+#
+# Features:
+# - `buildme_starter_list`: Lists available built-in and custom project starters.
+# - `buildme_starter_new`: Creates a new project from a specified starter template.
+# - `buildme_starter_init`: Initializes a new starter from a directory or GitHub
+#   repository, analyzing the project structure and dependencies.
+# - `buildme_starter_delete`: Deletes an existing starter.
+# - Supports extraction and cleaning of dependencies, identification of main files,
+#   and generation of project templates.
+#
+# Usage:
+# - Use `buildme starter list` to view available starters.
+# - Use `buildme starter new <name> <target>` to create a new project.
+# - Use `buildme starter init <name> <source>` to initialize a new starter.
+# - Use `buildme starter delete <name>` to remove a starter.
+#
+# Dependencies:
+# - Requires `git` for cloning repositories.
+# - Uses `tree` or `find` for generating project structure treemaps.
+# - Assumes access to the `buildme_generate` function for generating templates.
 
-# Constants
 STARTER_DIR="$BUILDME_PLUGIN_DIR/starters"
 USER_STARTER_DIR="$HOME/.buildme_starters"
 
-# Ensure directories exist - only create USER_STARTER_DIR since STARTER_DIR might not exist
 mkdir -p "$USER_STARTER_DIR"
 
-# Helper function to get starter path
 get_starter_path() {
     local name="$1"
-    # First check user's custom starters
     if [[ -d "$USER_STARTER_DIR/$name" ]]; then
         echo "$USER_STARTER_DIR/$name"
-    # Then check built-in starters
     elif [[ -d "$STARTER_DIR/$name" ]]; then
         echo "$STARTER_DIR/$name"
     else
@@ -21,11 +41,9 @@ get_starter_path() {
     fi
 }
 
-# List available starters
 buildme_starter_list() {
     echo "📦 Available starters:"
     
-    # List built-in starters
     echo "\nBuilt-in starters:"
     if [[ -d "$STARTER_DIR" ]]; then
         if [[ -n "$(ls -A "$STARTER_DIR" 2>/dev/null)" ]]; then
@@ -44,7 +62,6 @@ buildme_starter_list() {
         fi
     fi
     
-    # List user's custom starters
     echo "\nYour custom starters:"
     if [[ -d "$USER_STARTER_DIR" ]]; then
         if [[ -n "$(ls -A "$USER_STARTER_DIR" 2>/dev/null)" ]]; then
@@ -64,7 +81,6 @@ buildme_starter_list() {
     fi
 }
 
-# Create a new project from a starter
 buildme_starter_new() {
     local name="$1"
     local target="$2"
@@ -76,10 +92,8 @@ buildme_starter_new() {
         return 1
     }
     
-    # Read metadata
     local metadata="$starter_path/metadata.yaml"
     if [[ -f "$metadata" ]]; then
-        # Parse required variables
         local required_vars=()
         while IFS= read -r line; do
             if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*name:[[:space:]]*([^[:space:]]+) ]]; then
@@ -87,7 +101,6 @@ buildme_starter_new() {
             fi
         done < "$metadata"
         
-        # Check if all required variables are provided
         for var in "${required_vars[@]}"; do
             if ! [[ " $* " =~ " --$var=" ]]; then
                 echo "❌ Missing required variable: $var"
@@ -97,9 +110,7 @@ buildme_starter_new() {
         done
     fi
     
-    # Create the project
     if [[ -f "$starter_path/template.sh" ]]; then
-        # Use zsh to execute the template script to avoid bash version issues
         zsh "$starter_path/template.sh" "$target" "$@"
     else
         echo "❌ No template.sh found in starter '$name'"
@@ -107,58 +118,31 @@ buildme_starter_new() {
     fi
 }
 
-# Better dependency extraction with LLM assistance
 extract_dependencies() {
     local dir="$1"
     local dep_files="$2"
     local all_deps=""
-    
-    # echo "🔍 Debug: extract_dependencies called with:" >&2
-    # echo "  dir: $dir" >&2
-    # echo "  dep_files: $dep_files" >&2
-    # echo "🔍 Debug: Directory exists? $(test -d "$dir" && echo "YES" || echo "NO")" >&2
-    # echo "🔍 Debug: Directory contents:" >&2
-    # ls -la "$dir" >&2 2>/dev/null || echo "  Cannot list directory" >&2
-    # echo "" >&2
-    
-    # Read each dependency file - handle multi-line input properly
+
     while IFS= read -r dep_file; do
         [[ -z "$dep_file" ]] && continue
         
         local full_path="$dir/$dep_file"
-        # echo "🔍 Debug: Processing dep_file: '$dep_file'" >&2
-        # echo "🔍 Debug: Full path: '$full_path'" >&2
-        # echo "🔍 Debug: File exists? $(test -f "$full_path" && echo "YES" || echo "NO")" >&2
-        
         if [[ -f "$full_path" ]]; then
             echo "📖 Reading $dep_file..." >&2
             local content=$(cat "$full_path")
-            # echo "🔍 Debug: File content length: ${#content} characters" >&2
-            # echo "🔍 Debug: First 100 chars: ${content:0:100}..." >&2
             all_deps="${all_deps}From $dep_file:\n${content}\n\n"
         else
-            # echo "❌ Debug: File not found: $full_path" >&2
-            # Check if parent directory exists
             local parent_dir=$(dirname "$full_path")
-            # echo "🔍 Debug: Parent directory '$parent_dir' exists? $(test -d "$parent_dir" && echo "YES" || echo "NO")" >&2
             if [[ -d "$parent_dir" ]]; then
-                # echo "🔍 Debug: Parent directory contents:" >&2
-                # ls -la "$parent_dir" >&2 2>/dev/null || echo "  Cannot list parent directory" >&2
             fi
         fi
     done <<< "$dep_files"
     
-    # echo "🔍 Debug: Total deps content length: ${#all_deps}" >&2
-    # echo "🔍 Debug: all_deps preview: ${all_deps:0:200}..." >&2
-    
-    # If no dependencies found, return empty
     if [[ -z "$all_deps" ]]; then
-        # echo "⚠️  Debug: No dependencies found, returning empty" >&2
         echo ""
         return
     fi
     
-    # Use LLM to filter and clean dependencies
     local deps_prompt=$(cat <<EOF
 Extract and clean the dependencies from the following files. Return ONLY the dependencies in the format:
 - For Python: package==version (one per line)
@@ -173,17 +157,10 @@ Output ONLY the cleaned dependencies list, nothing else.
 EOF
 )
     
-    # echo "🔍 Dependency extraction LLM prompt:" >&2
-    # echo "──────────────────────────────" >&2
-    # echo "$deps_prompt" >&2
-    # echo "──────────────────────────────" >&2
-    # echo "" >&2
-    
     local cleaned_deps=$(buildme_generate "$deps_prompt" "$(get_api_key "gpt")")
     echo "$cleaned_deps"
 }
 
-# LLM-powered main files identification
 identify_main_files() {
     local dir="$1"
     local structure="$2"
@@ -214,12 +191,10 @@ EOF
 )
     
     local main_files=$(buildme_generate "$files_prompt" "$(get_api_key "gpt")")
-    # Clean up the output - remove backticks, echo commands, &&, etc.
     main_files=$(echo "$main_files" | sed -e 's/```[a-zA-Z]*//g' -e 's/```//g' -e 's/echo "//g' -e 's/"//g' -e 's/ && /\n/g' -e '/^$/d')
     echo "$main_files"
 }
 
-# LLM-powered dependency file identification
 identify_dependency_files() {
     local structure="$1"
     
@@ -252,25 +227,21 @@ EOF
 )
     
     local dep_files=$(buildme_generate "$dep_prompt" "$(get_api_key "gpt")")
-    # Clean up the output - remove backticks, echo commands, &&, etc.
     dep_files=$(echo "$dep_files" | sed -e 's/```[a-zA-Z]*//g' -e 's/```//g' -e 's/echo "//g' -e 's/"//g' -e 's/ && /\n/g' -e '/^$/d')
     echo "$dep_files"
 }
 
-# Read file content with truncation
 read_file_content() {
     local file="$1"
     local max_lines=300
     
     if [[ -f "$file" ]]; then
-        # Get first 300 lines, prioritizing actual code
         head -n "$max_lines" "$file"
     else
         echo "# File not found: $file"
     fi
 }
 
-# Create template from directory with improved flow
 buildme_starter_init_from_dir() {
     local name="$1"
     local source_dir="$2"
@@ -281,7 +252,6 @@ buildme_starter_init_from_dir() {
         return 1
     fi
     
-    # Step 1: Generate project structure
     echo "🔍 Analyzing project structure..."
     local structure=$(generate_treemap "$source_dir")
     # echo "📊 Project structure found:"
@@ -290,7 +260,6 @@ buildme_starter_init_from_dir() {
     # echo "──────────────────────────────"
     # echo ""
     
-    # Step 2: Identify dependency files using LLM
     echo "🔎 Identifying dependency files..."
     local dep_files=$(identify_dependency_files "$structure")
     # echo "📋 Dependency files identified:"
@@ -299,7 +268,6 @@ buildme_starter_init_from_dir() {
     # echo "──────────────────────────────"
     # echo ""
     
-    # Step 3: Extract dependencies
     echo "📦 Extracting dependencies..."
     local deps=$(extract_dependencies "$source_dir" "$dep_files")
     # echo "📦 Dependencies extracted:"
@@ -308,7 +276,6 @@ buildme_starter_init_from_dir() {
     # echo "──────────────────────────────"
     # echo ""
     
-    # Step 4: Identify main files using LLM
     echo "📄 Identifying main files..."
     local main_files=$(identify_main_files "$source_dir" "$structure")
     # echo "📄 Main files identified:"
@@ -316,8 +283,7 @@ buildme_starter_init_from_dir() {
     # echo "$main_files"
     # echo "──────────────────────────────"
     # echo ""
-    
-    # Step 5: Read main files content
+
     echo "📖 Reading main files content..."
     local main_files_content=""
     while IFS= read -r file; do
@@ -328,7 +294,6 @@ buildme_starter_init_from_dir() {
     done <<< "$main_files"
     echo ""
     
-    # Step 6: Generate template with all context
     echo "🧠 Generating template..."
     local template_prompt=$(cat <<EOF
 Analyze this project and generate a bash script that creates a reusable template.
@@ -381,33 +346,17 @@ INTELLIGENCE REQUIRED:
 Output ONLY the executable bash script. Be smart about what to include vs exclude.
 EOF
 )
-    
-    # echo "📝 Final LLM prompt:"
-    # echo "════════════════════════════════════════════════════════════════"
-    # echo "$template_prompt"
-    # echo "════════════════════════════════════════════════════════════════"
-    # echo ""
-    
+
     local template=$(buildme_generate "$template_prompt" "$(get_api_key "gpt")")
     
-    # Clean up the template - remove any markdown artifacts
     template=$(echo "$template" | sed -e 's/```bash//g' -e 's/```//g' -e '/^$/d')
     
-    # echo "🤖 LLM Response (generated template):"
-    # echo "──────────────────────────────"
-    # echo "$template"
-    # echo "──────────────────────────────"
-    # echo ""
-    
-    # Step 7: Save template
     local target_dir="$USER_STARTER_DIR/$name"
     mkdir -p "$target_dir"
     
-    # Save template script
     echo "$template" > "$target_dir/template.sh"
     chmod +x "$target_dir/template.sh"
     
-    # Save metadata
     cat > "$target_dir/metadata.yaml" << EOF
 name: $name
 version: 1.0.0
@@ -421,13 +370,11 @@ EOF
     echo "📝 You can now use: buildme starter new $name <project-name>"
 }
 
-# Simplified init function
 buildme_starter_init() {
     local name="$1"
     local source="$2"
     shift 2
     
-    # Parse instructions
     local instructions=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -441,13 +388,10 @@ buildme_starter_init() {
         esac
     done
     
-    # Auto-detect source type
     if [[ "$source" =~ ^https?://github.com/ ]] || [[ "$source" =~ ^[^/]+/[^/]+$ ]]; then
-        # GitHub repo
         local repo="${source#https://github.com/}"
         local temp_dir="/tmp/buildme_github_$name"
         
-        # Remove existing temp directory if it exists
         if [[ -d "$temp_dir" ]]; then
             echo "⚠️  Removing existing temporary directory..."
             rm -rf "$temp_dir"
@@ -456,15 +400,12 @@ buildme_starter_init() {
         echo "📥 Cloning repository..."
         git clone "https://github.com/$repo.git" "$temp_dir" || return 1
         
-        # Process the directory before cleanup
         buildme_starter_init_from_dir "$name" "$temp_dir" "$instructions"
         local result=$?
         
-        # Cleanup after processing
         rm -rf "$temp_dir"
         return $result
     elif [[ -d "$source" ]]; then
-        # Local directory
         buildme_starter_init_from_dir "$name" "$source" "$instructions"
     else
         echo "❌ Invalid source: $source"
@@ -472,18 +413,15 @@ buildme_starter_init() {
     fi
 }
 
-# Delete a starter
 buildme_starter_delete() {
     local name="$1"
     
-    # Determine the path of the starter
     local starter_path
     starter_path=$(get_starter_path "$name") || {
         echo "❌ Starter '$name' not found"
         return 1
     }
     
-    # Confirm deletion
     echo "Are you sure you want to delete the starter '$name'? This action cannot be undone. [y/N]"
     read -r confirmation
     if [[ "$confirmation" != "y" ]]; then
@@ -491,12 +429,10 @@ buildme_starter_delete() {
         return 0
     fi
     
-    # Delete the starter
     rm -rf "$starter_path"
     echo "✅ Starter '$name' has been deleted."
 }
 
-# Main starter function
 buildme_starter() {
     local subcmd="$1"
     shift
@@ -523,13 +459,11 @@ buildme_starter() {
 
 generate_treemap() {
     local dir="$1"
-    local max_depth=3  # Adjust depth as needed
+    local max_depth=3
 
     if command -v tree &> /dev/null; then
-        # Use tree if available
         tree -L "$max_depth" "$dir"
     else
-        # Fallback to find if tree is not available
         find "$dir" -maxdepth "$max_depth" -type d -print | while read -r d; do
             echo "$d"
             find "$d" -maxdepth 1 -type f \( -name "requirements.txt" -o -name "package.json" -o -name "*.py" -o -name "*.js" \) -print | sed 's/^/  /'

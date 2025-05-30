@@ -1,6 +1,31 @@
 #!/usr/bin/env zsh
 
 # --- buildme.plugin.zsh ---
+#
+# This script serves as the main entry point for the 'buildme' plugin, which
+# leverages AI to generate shell command workflows based on natural language
+# prompts. It integrates various functionalities such as project starters,
+# command history management, recording sessions, and snapshot handling.
+#
+# Features:
+# - Initializes and manages API keys for model interactions.
+# - Provides command history tracking and management.
+# - Supports project starter templates for quick project setup.
+# - Records and replays terminal command sessions.
+# - Creates and restores directory snapshots.
+# - Generates shell commands using AI models based on user prompts.
+#
+# Usage:
+# - Use `buildme <task description>` to generate and optionally run shell commands.
+# - Manage project starters with `buildme starter <command>`.
+# - Track and manage command history with `buildme history <command>`.
+# - Record terminal sessions with `buildme record <command>`.
+# - Create and manage snapshots with `buildme snapshot <command>`.
+# - Restore snapshots with `buildme restore <name|path>`.
+#
+# Dependencies:
+# - Requires access to various sourced scripts for specific functionalities.
+# - Assumes API keys are configured for model interactions.
 
 
 BUILDME_PLUGIN_DIR="${${(%):-%x}:A:h}"

@@ -1,3 +1,28 @@
+# --- generate.zsh ---
+#
+# This script defines the `buildme_generate` function, which utilizes various
+# language models to convert natural language prompts into intelligent shell
+# command workflows. It supports multiple models, including OpenAI, DeepSeek,
+# and local models, to provide contextually appropriate command suggestions.
+#
+# Features:
+# - Converts user prompts into shell commands using specified language models.
+# - Supports OpenAI, DeepSeek, and local models for command generation.
+# - Provides system prompts to guide the model in generating focused and minimal
+#   command outputs.
+# - Handles API requests and responses for different models.
+#
+# Usage:
+# - Use `buildme_generate <prompt> <key> [model]` to generate shell commands
+#   based on the provided prompt and model.
+# - The default model is `gpt-4o-mini` if none is specified.
+#
+# Dependencies:
+# - Requires `curl` for making API requests.
+# - Uses `jq` for parsing JSON responses.
+# - Assumes access to the specified model's API endpoint.
+
+
 buildme_generate() {
   local prompt="$1"
   local key="$2"
@@ -49,7 +74,7 @@ Be minimal and focused on the exact request."
           -H "Content-Type: application/json" \
           -d @- | jq -r '.choices[0].message.content'
   elif [[ "$model" == "local" ]]; then
-    # Use a simplified but effective system prompt for local models
+
     local local_system_prompt="You are an intelligent CLI command generator that understands development workflows.
 
 INTELLIGENCE:
@@ -74,7 +99,7 @@ clean up: git clean -fd
 
 Generate minimal, focused commands:"
 
-    # Create JSON manually to avoid escaping issues
+
     local temp_file=$(mktemp)
     cat > "$temp_file" << EOF
 {
@@ -100,14 +125,11 @@ EOF
       -H "Content-Type: application/json" \
       -d @"$temp_file")
     
-    # Clean up temp file
     rm -f "$temp_file"
     
-    # Extract and clean the response
     local content
     content=$(echo "$response" | jq -r '.choices[0].message.content // empty')
     
-    # Clean up the response (remove any extra formatting)
     echo "$content" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | head -n 1
   else
     jq -n \
