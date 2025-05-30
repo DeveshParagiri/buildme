@@ -39,6 +39,7 @@ source "$BUILDME_PLUGIN_DIR/core/generate.zsh"
 source "$BUILDME_PLUGIN_DIR/core/init.zsh"
 source "$BUILDME_PLUGIN_DIR/core/run.zsh"
 source "$BUILDME_PLUGIN_DIR/commands/undo.zsh"
+source "$BUILDME_PLUGIN_DIR/commands/share.zsh"
 
 
 buildme() {
@@ -140,6 +141,12 @@ buildme() {
   if [[ "$1" == "restore" ]]; then
     shift
     buildme_snapshot_restore "$@"
+    return 0
+  fi
+
+  if [[ "$1" == "share" ]]; then
+    shift
+    buildme_share "$@"
     return 0
   fi
 
