@@ -33,7 +33,17 @@ ORIGINAL_REQUEST="$original_request"
 GENERATED_COMMANDS="$script"
 
 EOF
-    eval "$script"
+    # Clean the script and execute each command
+    local cleaned_script
+    cleaned_script=$(echo "$script" | sed 's/^```[a-z]*//; s/^```//g; s/```$//g' | grep -v '^```' | sed '/^$/d')
+    
+    echo "$cleaned_script" | sed 's/ && /\n/g' | while IFS= read -r cmd; do
+      [[ -z "$cmd" ]] && continue
+      cmd=$(echo "$cmd" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      [[ -z "$cmd" ]] && continue
+      echo "🔄 Running: $cmd"
+      eval "$cmd"
+    done
   else
     echo "🚫 Skipped running commands."
   fi
@@ -54,7 +64,11 @@ EOF
   exec 3<&0
   local run_all=0
 
-  echo "$script" | sed 's/ && /\n/g' | while IFS= read -r line; do
+  # Clean the script first
+  local cleaned_script
+  cleaned_script=$(echo "$script" | sed 's/^```[a-z]*//; s/^```//g; s/```$//g' | grep -v '^```' | sed '/^$/d')
+
+  echo "$cleaned_script" | sed 's/ && /\n/g' | while IFS= read -r line; do
     [[ -z "$line" ]] && continue
 
     line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
@@ -65,9 +79,9 @@ EOF
     read -r confirm <&3
 
     case "$confirm" in
-      [Yy]|"") eval "$line" ;;
+      [Yy]|"") echo "🔄 Running: $line"; eval "$line" ;;
       [Nn]) echo "⏭️  Skipped." ;;
-      [Aa]) run_all=1; eval "$line" ;;
+      [Aa]) run_all=1; echo "🔄 Running: $line"; eval "$line" ;;
       [Qq]) echo "👋 Exiting"; break ;;
       *) echo "❓ Unknown choice, skipping." ;;
     esac
